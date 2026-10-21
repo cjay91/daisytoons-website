@@ -55,11 +55,51 @@ def test_packer_cannot_change_prices_through_the_service_either(db, make_staff):
         products.update_product(db, packer, product.id, ProductUpdate(price="0.01"))
 
 
-@pytest.mark.parametrize(("role", "status"), [(ADMIN, 200), (PACKER, 200), (SUPPORT, 403)])
+@pytest.mark.parametrize(("role", "status"), [(ADMIN, 201), (PACKER, 201), (SUPPORT, 403)])
 def test_change_stock(client, staff_headers, product_id, role, status):
+    response = client.post(
+        f"/staff/products/{product_id}/stock-adjustments",
+        json={"reason": "received", "quantity_change": 20},
+        headers=staff_headers(role),
+    )
+
+    assert response.status_code == status
+
+
+@pytest.mark.parametrize(("role", "status"), [(ADMIN, 200), (PACKER, 200), (SUPPORT, 403)])
+def test_change_bin_location(client, staff_headers, product_id, role, status):
     response = client.patch(
         f"/staff/products/{product_id}/inventory",
-        json={"on_hand": 20, "bin_location": "A-3"},
+        json={"bin_location": "A-3"},
+        headers=staff_headers(role),
+    )
+
+    assert response.status_code == status
+
+
+@pytest.mark.parametrize(("role", "status"), [(ADMIN, 200), (PACKER, 200), (SUPPORT, 200)])
+def test_view_stock_log(client, staff_headers, product_id, role, status):
+    response = client.get(
+        f"/staff/products/{product_id}/stock-adjustments", headers=staff_headers(role)
+    )
+
+    assert response.status_code == status
+
+
+@pytest.mark.parametrize(("role", "status"), [(ADMIN, 201), (PACKER, 403), (SUPPORT, 403)])
+def test_add_tag(client, staff_headers, role, status):
+    response = client.post(
+        "/staff/tags", json={"kind": "occasion", "name": "Poya"}, headers=staff_headers(role)
+    )
+
+    assert response.status_code == status
+
+
+@pytest.mark.parametrize(("role", "status"), [(ADMIN, 200), (PACKER, 403), (SUPPORT, 403)])
+def test_set_product_tags(client, staff_headers, product_id, role, status):
+    response = client.put(
+        f"/staff/products/{product_id}/tags",
+        json={"occasions": ["birthday"]},
         headers=staff_headers(role),
     )
 

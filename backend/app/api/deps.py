@@ -8,10 +8,12 @@ from app.db import get_db
 from app.errors import NotAuthenticated
 from app.models import Customer, Staff
 from app.security import TokenKind, decode_access_token
+from app.storage import Storage, get_storage
 
 _bearer = HTTPBearer(auto_error=False)
 
 DB = Annotated[Session, Depends(get_db)]
+FileStorage = Annotated[Storage, Depends(get_storage)]
 Credentials = Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)]
 
 

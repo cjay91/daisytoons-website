@@ -13,21 +13,26 @@ app/
 ├── permissions.py  Which staff role may do what
 ├── security.py     Password hashing and login tokens
 ├── errors.py       App errors and the shared JSON error shape
+├── storage.py      Image storage (S3-compatible), plus an in-memory version for tests
+├── images.py       Checks an upload really is a JPEG, PNG or WebP
+├── importer.py     The CSV product import
+├── text.py         Helpers such as making a slug from a name
 ├── api/            HTTP routes (thin: they call services)
-└── cli.py          Command-line tasks, such as creating the first admin
+└── cli.py          Command-line tasks: create-admin, init-storage, import-products
 migrations/         Alembic migrations
 tests/              pytest suite (needs Postgres)
 ```
 
-See `docs/specs/part-2-data-model-auth.md` for the tables, endpoints and role rules.
+The specs in `docs/specs/` list the tables, endpoints and role rules for each part.
 
 ## Run locally without Docker
 
-Start the database with `docker compose up db` from the repo root, then:
+Start the database and image storage with `docker compose up db storage` from the repo root, then:
 
 ```bash
 uv sync
 uv run alembic upgrade head
+uv run python -m app.cli init-storage
 uv run uvicorn app.main:app --reload
 ```
 
@@ -42,6 +47,15 @@ docker compose exec api python -m app.cli create-admin --email you@example.com -
 ```
 
 It asks for a password (or reads `ADMIN_PASSWORD`). Admins add other staff through `POST /staff/members`.
+
+## Import products
+
+```bash
+uv run python -m app.cli import-products ../docs/templates/products-sample.csv \
+    --images ../docs/templates/sample-images --dry-run
+```
+
+Drop `--dry-run` to save. The columns and rules are in `docs/specs/part-3-catalog-inventory.md`; start from `docs/templates/products-template.csv`. If any row has a problem, nothing is imported and every problem is listed with its line number. Running the same file again updates products by SKU and only logs real stock changes.
 
 ## Changing the database
 

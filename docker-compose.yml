@@ -26,24 +26,47 @@ services:
       timeout: 5s
       retries: 10
 
+  # S3-compatible object storage for product images (stands in for a hosted provider).
+  storage:
+    image: chrislusf/seaweedfs:4.48
+    command: server -dir=/data -s3 -s3.port=8333
+    ports:
+      - "8333:8333"
+    volumes:
+      - storage-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8333/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   api:
     build: ./backend
-    # Apply database migrations, then start the API with auto-reload.
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    # Apply database migrations, make sure the image bucket exists, then start the API.
+    command: >-
+      sh -c "alembic upgrade head && python -m app.cli init-storage &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://daisytoons:daisytoons@db:5432/daisytoons}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-in-production}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://storage:8333}
+      S3_BUCKET: ${S3_BUCKET:-daisytoons-images}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-http://localhost:8333/daisytoons-images}
     ports:
       - "8000:8000"
     volumes:
       - ./backend/app:/app/app
       - ./backend/migrations:/app/migrations
+      - ./docs/templates:/templates:ro
+      - ./import:/import:ro
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      storage:
         condition: service_healthy
     healthcheck:
       test:
@@ -57,3 +80,4 @@ services:
 
 volumes:
   db-data:
+  storage-data:
