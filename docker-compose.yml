@@ -28,15 +28,18 @@ services:
 
   api:
     build: ./backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # Apply database migrations, then start the API with auto-reload.
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://daisytoons:daisytoons@db:5432/daisytoons}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://daisytoons:daisytoons@db:5432/daisytoons}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-in-production}
     ports:
       - "8000:8000"
     volumes:
       - ./backend/app:/app/app
+      - ./backend/migrations:/app/migrations
     depends_on:
       db:
         condition: service_healthy
