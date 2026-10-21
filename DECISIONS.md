@@ -2,6 +2,14 @@
 
 Choices we may want to revisit, with the reason we made them. Newest first.
 
+## 2026-10-21: Part 3 catalog and inventory
+
+- **SeaweedFS is the local image store**, as an S3-compatible stand-in. MinIO was the first choice, but it no longer publishes ready-made Docker images. The code only speaks the S3 protocol (boto3), so production can use Cloudflare R2, AWS S3 or similar by changing settings. Pick the provider in Part 7.
+- **Images are public URLs straight from the bucket** (`S3_PUBLIC_BASE_URL`), with long cache headers and random file names. A CDN or image resizing can sit in front later without code changes.
+- **Stock on hand changes only through logged adjustments.** The Part 2 "set on_hand" field was removed from the inventory edit endpoint. Stock before the log existed got one opening log entry in the migration.
+- **Tags are a fixed list staff manage** (12 occasions, 8 recipients to start), not free text, so filters stay clean. The importer rejects unknown tags instead of creating them, which catches typos.
+- **The importer is all-or-nothing and matched by SKU**, so a fixed file can simply be run again.
+
 ## 2026-10-21: Part 2 data model and auth
 
 - **Synchronous SQLAlchemy 2 with psycopg 3.** Simpler to write and test than async; FastAPI runs sync routes in a thread pool, which is plenty for about 100 products. Revisit if agent streaming needs async database access.

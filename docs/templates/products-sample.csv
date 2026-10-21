@@ -1,0 +1,7 @@
+sku,name,slug,description,price,occasions,recipients,on_hand,reorder_point,bin_location,images,active
+SAMPLE-MUG-001,Daisy ceramic mug,,Hand-painted daisy mug. Holds 350 ml.,1850.00,Birthday; Thank you,For her; For friends,24,6,A-1,daisy-mug.png,yes
+SAMPLE-CARD-002,Avurudu greeting card,,Folded card with a gold-foil kolam design.,450.00,Avurudu,For parents; For friends,120,30,B-4,,yes
+SAMPLE-BEAR-003,Cuddly teddy bear,,Soft 30 cm bear with a ribbon.,3200.00,Birthday; Valentine's Day; New baby,For kids; For her,15,4,C-2,teddy-bear.png,yes
+SAMPLE-HAMPER-004,Ceylon tea hamper,,Three Ceylon teas with a wooden spoon.,5400.00,Christmas; Thank you; Mother's Day,For parents; For colleagues,8,3,D-1,,yes
+SAMPLE-FRAME-005,Couple photo frame,,Wooden frame for a 6x4 photo.,2750.00,Anniversary; Wedding; Valentine's Day,For couples,12,3,A-3,,yes
+SAMPLE-PEN-006,Engraved teacher's pen,,Metal pen with a gift box.,1500.00,Thank you; Graduation,For teachers,0,5,B-1,,no

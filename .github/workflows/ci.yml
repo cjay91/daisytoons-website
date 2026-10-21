@@ -65,6 +65,13 @@ jobs:
       - run: curl --fail --silent http://localhost:8000/health
       - name: Migrations ran on start
         run: docker compose exec -T db psql -U daisytoons -tAc "select count(*) from alembic_version" | grep -q 1
+      - name: Sample products import and their images are served
+        run: |
+          docker compose exec -T api python -m app.cli import-products \
+            /templates/products-sample.csv --images /templates/sample-images
+          url=$(curl --fail --silent "http://localhost:8000/products?occasion=birthday" \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)[0]["images"][0]["url"])')
+          curl --fail --silent --output /dev/null "$url"
       - if: failure()
         run: docker compose logs
       - if: always()

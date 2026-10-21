@@ -21,6 +21,7 @@ from app.db import get_db
 from app.main import create_app
 from app.models import Staff, StaffRole
 from app.security import create_access_token, hash_password
+from app.storage import MemoryStorage, get_storage
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 TEST_DATABASE_URL = os.environ.get(
@@ -70,10 +71,21 @@ def db(engine: Engine) -> Iterator[Session]:
 
 
 @pytest.fixture
-def client(db: Session) -> TestClient:
+def storage() -> MemoryStorage:
+    return MemoryStorage()
+
+
+@pytest.fixture
+def client(db: Session, storage: MemoryStorage) -> TestClient:
     app = create_app()
     app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_storage] = lambda: storage
     return TestClient(app)
+
+
+# Smallest valid PNG header plus padding; enough for the image type check.
+PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+JPEG_BYTES = b"\xff\xd8\xff\xe0" + b"\x00" * 64
 
 
 @pytest.fixture

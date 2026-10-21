@@ -10,7 +10,7 @@ daisytoons-website/
 ├── console/             Staff console for orders, stock and fulfillment (Next.js)
 ├── backend/             API and business logic (FastAPI, Python)
 ├── docs/                Project documents, including the build plan
-├── docker-compose.yml   Local stack: Postgres + pgvector, Redis, API
+├── docker-compose.yml   Local stack: Postgres + pgvector, Redis, image storage, API
 └── DECISIONS.md         Choices we may revisit
 ```
 
@@ -26,13 +26,21 @@ cp .env.example .env
 docker compose up
 ```
 
-That starts Postgres (port 5432), Redis (6379) and the API at http://localhost:8000. The API applies database migrations when it starts. Check it with http://localhost:8000/health, or browse the API docs at http://localhost:8000/docs. The API reloads when you edit files in `backend/app/`.
+That starts Postgres (port 5432), Redis (6379), image storage (8333) and the API at http://localhost:8000. The API applies database migrations when it starts. Check it with http://localhost:8000/health, or browse the API docs at http://localhost:8000/docs. The API reloads when you edit files in `backend/app/`.
 
 To log in to staff endpoints, create the first admin account:
 
 ```bash
 docker compose exec api python -m app.cli create-admin --email you@example.com --name "Your Name"
 ```
+
+To load the six sample products (with two photos):
+
+```bash
+docker compose exec api python -m app.cli import-products /templates/products-sample.csv --images /templates/sample-images
+```
+
+To load your own products, copy `docs/templates/products-template.csv`, fill it in, and put it with your photos in an `import/` folder at the repo root (git ignores it). Then run `import-products /import/products.csv --images /import` the same way. Add `--dry-run` to check the file first.
 
 The web apps run outside Docker:
 

@@ -1,3 +1,6 @@
+# Your own product data for importing (see docs/templates)
+/import/
+
 # Environment
 .env
 .env.*

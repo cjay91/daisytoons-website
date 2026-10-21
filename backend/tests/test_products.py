@@ -1,4 +1,4 @@
-from app.models import Inventory, StaffRole
+from app.models import StaffRole
 
 ADMIN = StaffRole.ADMIN
 MUG = {"sku": "MUG-001", "slug": "daisy-mug", "name": "Daisy mug", "price": "12.50"}
@@ -55,19 +55,14 @@ def test_negative_price_is_rejected(client, staff_headers):
     assert response.status_code == 422
 
 
-def test_stock_cannot_drop_below_reserved(client, db, staff_headers):
+def test_inventory_edit_no_longer_sets_stock_directly(client, staff_headers):
     headers = staff_headers(ADMIN)
     product_id = create(client, headers).json()["id"]
-    client.patch(f"/staff/products/{product_id}/inventory", json={"on_hand": 5}, headers=headers)
 
-    db.get(Inventory, product_id).reserved = 3
-    db.flush()
+    client.patch(f"/staff/products/{product_id}/inventory", json={"on_hand": 50}, headers=headers)
 
-    response = client.patch(
-        f"/staff/products/{product_id}/inventory", json={"on_hand": 2}, headers=headers
-    )
-
-    assert response.status_code == 409
+    stock = client.get(f"/staff/products/{product_id}/inventory", headers=headers).json()
+    assert stock["on_hand"] == 0
 
 
 def test_unknown_product_is_not_found(client, staff_headers):
