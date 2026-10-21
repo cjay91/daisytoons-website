@@ -26,7 +26,13 @@ cp .env.example .env
 docker compose up
 ```
 
-That starts Postgres (port 5432), Redis (6379) and the API at http://localhost:8000. Check it with http://localhost:8000/health, or browse the API docs at http://localhost:8000/docs. The API reloads when you edit files in `backend/app/`.
+That starts Postgres (port 5432), Redis (6379) and the API at http://localhost:8000. The API applies database migrations when it starts. Check it with http://localhost:8000/health, or browse the API docs at http://localhost:8000/docs. The API reloads when you edit files in `backend/app/`.
+
+To log in to staff endpoints, create the first admin account:
+
+```bash
+docker compose exec api python -m app.cli create-admin --email you@example.com --name "Your Name"
+```
 
 The web apps run outside Docker:
 
@@ -37,6 +43,6 @@ cd console && npm install && npm run dev    # http://localhost:3001
 
 ## Checks
 
-CI runs on every push (`.github/workflows/ci.yml`): backend lint, format and tests; lint, typecheck and build for both web apps; and a smoke test that starts the Compose stack and calls `/health`. To run the same checks locally, see `backend/README.md`, or run `npm run lint`, `npm run typecheck` and `npm run build` in each web app.
+CI runs on every push (`.github/workflows/ci.yml`): backend lint, format and tests against Postgres; lint, typecheck and build for both web apps; and a smoke test that starts the Compose stack and calls `/health`. To run the same checks locally, see `backend/README.md`, or run `npm run lint`, `npm run typecheck` and `npm run build` in each web app.
 
 See `docs/Gift Shop Build Plan.pdf` for the full build plan.
