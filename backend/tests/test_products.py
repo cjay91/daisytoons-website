@@ -19,6 +19,13 @@ def test_public_list_shows_only_active_products(client, staff_headers):
     assert client.get("/products/old-card").status_code == 404
 
 
+def test_prices_are_in_sri_lankan_rupees(client, staff_headers):
+    created = create(client, staff_headers(ADMIN), price="1250.00").json()
+
+    assert created["price"] == "1250.00"
+    assert created["currency"] == "LKR"
+
+
 def test_new_product_starts_with_empty_stock(client, staff_headers):
     headers = staff_headers(ADMIN)
     product_id = create(client, headers).json()["id"]

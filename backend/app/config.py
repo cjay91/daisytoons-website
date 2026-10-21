@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
 
+    # Every price is in this one currency (ISO 4217 code): Sri Lankan rupees.
+    currency: str = "LKR"
+
     jwt_secret: str = DEV_JWT_SECRET
     jwt_expire_minutes: int = 60
 

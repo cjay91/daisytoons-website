@@ -4,8 +4,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
 
+from app.config import get_settings
 from app.models import StaffRole
 
 PasswordStr = Annotated[str, Field(min_length=8, max_length=128)]
@@ -82,6 +83,11 @@ class ProductOut(ORMModel):
     description: str
     price: Decimal
     is_active: bool
+
+    @computed_field
+    @property
+    def currency(self) -> str:
+        return get_settings().currency
 
 
 class InventoryUpdate(BaseModel):

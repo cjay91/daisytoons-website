@@ -6,7 +6,7 @@ Done when: migrations run cleanly on a fresh database (up, down and up again), a
 
 ## Tables
 
-Money is stored as `NUMERIC(10, 2)` in the shop's single currency. Every table has `created_at` and `updated_at`.
+All prices are in Sri Lankan rupees (LKR), stored as `NUMERIC(10, 2)`, and product responses include `"currency": "LKR"`. Every table has `created_at` and `updated_at`.
 
 | Table | Main columns | Notes |
 | --- | --- | --- |

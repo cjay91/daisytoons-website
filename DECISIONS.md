@@ -9,7 +9,7 @@ Choices we may want to revisit, with the reason we made them. Newest first.
 - **Login tokens are JWTs sent as a Bearer header**, valid 60 minutes, with no refresh tokens yet. Customer and staff tokens are kept apart. Revisit (refresh tokens or cookie sessions) when the storefront and console add login screens.
 - **Role checks live in services** (`app/permissions.py`), not only in routes, so the console and future agents get the same rules.
 - **Status fields are VARCHAR with a CHECK constraint**, not native Postgres enums, because adding a value later is a simple migration.
-- **Money is NUMERIC(10, 2)** in a single shop currency. The currency itself is still to be confirmed.
+- **Prices are in Sri Lankan rupees (LKR)**, stored as NUMERIC(10, 2), which holds up to Rs 99,999,999.99. Product responses include `"currency": "LKR"` so the web apps never have to guess.
 - **The first admin is created from the command line**; there is no public way to become staff.
 
 ## 2026-10-21: Part 1 foundations
