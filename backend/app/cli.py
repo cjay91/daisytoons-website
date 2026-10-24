@@ -11,6 +11,7 @@ from app.db import SessionLocal
 from app.errors import AppError
 from app.importer import ImportFailed, import_products
 from app.services.accounts import create_first_admin
+from app.services.orders import release_expired_orders
 from app.storage import S3Storage, get_storage
 
 
@@ -56,6 +57,13 @@ def _import_products(args: argparse.Namespace) -> int:
     return 0
 
 
+def _release_expired_orders(_: argparse.Namespace) -> int:
+    with SessionLocal() as db:
+        count = release_expired_orders(db)
+    print(f"Released {count} expired orders.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -73,6 +81,11 @@ def main(argv: list[str] | None = None) -> int:
     importer.add_argument("--images", type=Path, help="Folder holding the image files")
     importer.add_argument("--dry-run", action="store_true", help="Check without saving")
     importer.set_defaults(handler=_import_products)
+
+    release = commands.add_parser(
+        "release-expired-orders", help="Cancel unpaid orders past their time, freeing stock"
+    )
+    release.set_defaults(handler=_release_expired_orders)
 
     args = parser.parse_args(argv)
     return args.handler(args)

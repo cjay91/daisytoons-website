@@ -17,8 +17,13 @@ app/
 ├── images.py       Checks an upload really is a JPEG, PNG or WebP
 ├── importer.py     The CSV product import
 ├── text.py         Helpers such as making a slug from a name
+├── pricing.py      Delivery and gift wrap charges, Sri Lanka's districts
+├── payhere.py      PayHere payment form hash and notification signature checks
+├── email.py        Outgoing email (SMTP), plus an in-memory version for tests
+├── worker.py       Background jobs: expire unpaid orders, retry failed emails
 ├── api/            HTTP routes (thin: they call services)
-└── cli.py          Command-line tasks: create-admin, init-storage, import-products
+└── cli.py          Command-line tasks: create-admin, init-storage, import-products,
+                    release-expired-orders
 migrations/         Alembic migrations
 tests/              pytest suite (needs Postgres)
 ```

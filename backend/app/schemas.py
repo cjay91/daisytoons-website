@@ -2,12 +2,13 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, model_validator
 
 from app.config import get_settings
-from app.models import StaffRole, StockReason, TagKind
+from app.models import OrderStatus, StaffRole, StockReason, TagKind
+from app.pricing import DISTRICTS
 from app.storage import public_url
 
 PasswordStr = Annotated[str, Field(min_length=8, max_length=128)]
@@ -159,6 +160,8 @@ class StockAdjustmentCreate(BaseModel):
             raise ValueError("Give either quantity_change or new_on_hand, not both.")
         if self.reason == StockReason.IMPORT:
             raise ValueError("The import reason is only for the import script.")
+        if self.reason == StockReason.SALE:
+            raise ValueError("The sale reason is only for paid orders.")
         return self
 
 
@@ -172,3 +175,111 @@ class StockAdjustmentOut(ORMModel):
     on_hand_after: int
     note: str
     created_at: datetime
+
+
+class CartItemOut(BaseModel):
+    product_id: int
+    slug: str
+    name: str
+    image_url: str | None
+    unit_price: Decimal
+    quantity: int
+    line_total: Decimal
+    # How many more the shop could sell right now; 0 when the product is no longer sold.
+    available: int
+
+
+class CartOut(BaseModel):
+    # Guests keep this and send it back as the X-Cart-Token header. Empty when there's no cart.
+    token: str | None
+    items: list[CartItemOut]
+    item_count: int
+    subtotal: Decimal
+    gift_wrap: bool
+    gift_message: str
+    gift_wrap_fee: Decimal
+    # Delivery depends on the district, so the cart shows both prices.
+    delivery_fee_colombo: Decimal
+    delivery_fee_other: Decimal
+    free_delivery_over: Decimal
+    currency: str
+
+
+class CartItemSet(BaseModel):
+    quantity: int = Field(ge=0, le=20)
+
+
+class CartUpdate(BaseModel):
+    gift_wrap: bool | None = None
+    gift_message: str | None = Field(default=None, max_length=300)
+
+
+class DeliveryAddress(BaseModel):
+    line1: str = Field(min_length=1, max_length=200)
+    line2: str | None = Field(default=None, max_length=200)
+    city: str = Field(min_length=1, max_length=100)
+    district: str
+    postal_code: str | None = Field(default=None, max_length=20)
+
+    @model_validator(mode="after")
+    def _known_district(self) -> "DeliveryAddress":
+        if self.district not in DISTRICTS:
+            raise ValueError(f"District must be one of: {', '.join(DISTRICTS)}.")
+        return self
+
+
+class CheckoutRequest(BaseModel):
+    # Required for guests. Logged-in customers can leave it out to use their account email.
+    email: EmailStr | None = None
+    customer_name: str = Field(min_length=1, max_length=200)
+    phone: str = Field(min_length=7, max_length=32)
+    address: DeliveryAddress
+    notes: str | None = Field(default=None, max_length=1000)
+
+
+class PaymentForm(BaseModel):
+    """The storefront posts these fields, as an HTML form, to action_url."""
+
+    action_url: str
+    fields: dict[str, str]
+
+
+class CheckoutOut(BaseModel):
+    order_number: str
+    order_key: str
+    total: Decimal
+    currency: str
+    expires_at: datetime
+    payment: PaymentForm
+
+
+class OrderItemOut(ORMModel):
+    product_id: int
+    product_name: str
+    unit_price: Decimal
+    quantity: int
+    line_total: Decimal
+
+
+class OrderOut(ORMModel):
+    order_number: str
+    status: OrderStatus
+    email: str
+    customer_name: str
+    phone: str
+    items: list[OrderItemOut]
+    subtotal: Decimal
+    gift_wrap: bool
+    gift_wrap_fee: Decimal
+    gift_message: str
+    delivery_fee: Decimal
+    total: Decimal
+    shipping_address: dict[str, Any]
+    expires_at: datetime | None
+    paid_at: datetime | None
+    created_at: datetime
+
+    @computed_field
+    @property
+    def currency(self) -> str:
+        return get_settings().currency

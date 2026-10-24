@@ -54,6 +54,13 @@ services:
       S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://storage:8333}
       S3_BUCKET: ${S3_BUCKET:-daisytoons-images}
       S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-http://localhost:8333/daisytoons-images}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-fake}
+      PAYHERE_MERCHANT_ID: ${PAYHERE_MERCHANT_ID:-1200000}
+      PAYHERE_MERCHANT_SECRET: ${PAYHERE_MERCHANT_SECRET:-dev-only-payhere-secret}
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:8000}
+      STOREFRONT_URL: ${STOREFRONT_URL:-http://localhost:3000}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
     ports:
       - "8000:8000"
     volumes:
@@ -68,6 +75,8 @@ services:
         condition: service_healthy
       storage:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     healthcheck:
       test:
         - CMD
@@ -77,6 +86,30 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # Background jobs: releases unpaid orders after their 30 minutes, retries failed emails.
+  worker:
+    build: ./backend
+    command: python -m app.worker
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://daisytoons:daisytoons@db:5432/daisytoons}
+      STOREFRONT_URL: ${STOREFRONT_URL:-http://localhost:3000}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+    volumes:
+      - ./backend/app:/app/app
+    depends_on:
+      # The api container applies migrations before it reports healthy.
+      api:
+        condition: service_healthy
+
+  # A test inbox: catches every email the app sends. Read them at http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.32
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
 volumes:
   db-data:

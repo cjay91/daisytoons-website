@@ -7,6 +7,7 @@ other's data.
 
 import os
 from collections.abc import Callable, Iterator
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -18,8 +19,9 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.email import MemorySender, get_email_sender
 from app.main import create_app
-from app.models import Staff, StaffRole
+from app.models import Customer, Inventory, Product, Staff, StaffRole
 from app.security import create_access_token, hash_password
 from app.storage import MemoryStorage, get_storage
 
@@ -76,10 +78,16 @@ def storage() -> MemoryStorage:
 
 
 @pytest.fixture
-def client(db: Session, storage: MemoryStorage) -> TestClient:
+def mailer() -> MemorySender:
+    return MemorySender()
+
+
+@pytest.fixture
+def client(db: Session, storage: MemoryStorage, mailer: MemorySender) -> TestClient:
     app = create_app()
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_storage] = lambda: storage
+    app.dependency_overrides[get_email_sender] = lambda: mailer
     return TestClient(app)
 
 
@@ -119,3 +127,44 @@ def staff_headers(make_staff) -> Callable[[StaffRole], dict[str, str]]:
         return auth_headers("staff", make_staff(role).id)
 
     return headers
+
+
+@pytest.fixture
+def make_product(db: Session) -> Callable[..., Product]:
+    count = 0
+
+    def make(price: str = "1000", on_hand: int = 10, *, is_active: bool = True) -> Product:
+        nonlocal count
+        count += 1
+        product = Product(
+            sku=f"TEST-{count}",
+            slug=f"test-product-{count}",
+            name=f"Test product {count}",
+            price=Decimal(price),
+            is_active=is_active,
+            inventory=Inventory(on_hand=on_hand),
+        )
+        db.add(product)
+        db.flush()
+        return product
+
+    return make
+
+
+@pytest.fixture
+def make_customer(db: Session) -> Callable[..., Customer]:
+    count = 0
+
+    def make() -> Customer:
+        nonlocal count
+        count += 1
+        customer = Customer(
+            email=f"customer{count}@example.com",
+            password_hash=hash_password("customer-password"),
+            full_name=f"Customer {count}",
+        )
+        db.add(customer)
+        db.flush()
+        return customer
+
+    return make

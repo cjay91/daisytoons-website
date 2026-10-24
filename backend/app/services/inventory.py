@@ -1,5 +1,6 @@
-"""Stock. On-hand quantities change only through adjust_stock or record_import_stock, which
-write the new number and its log entry together."""
+"""Stock. On-hand quantities change only through adjust_stock, record_import_stock or
+record_sale, which write the new number and its log entry together. Reserved quantities (held
+for unpaid orders) change only through reserve_stock and release_stock."""
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,10 +11,54 @@ from app.permissions import Permission, require
 from app.schemas import InventoryUpdate, StockAdjustmentCreate
 
 
+def lock_inventories(db: Session, product_ids: list[int]) -> dict[int, Inventory]:
+    """Lock several stock rows, always in product id order so two orders can't deadlock."""
+    rows = db.scalars(
+        select(Inventory)
+        .where(Inventory.product_id.in_(product_ids))
+        .order_by(Inventory.product_id)
+        .with_for_update()
+        # Locked rows are read fresh, not from what this session loaded before.
+        .execution_options(populate_existing=True)
+    )
+    return {row.product_id: row for row in rows}
+
+
+def available(inventory: Inventory) -> int:
+    return max(inventory.on_hand - inventory.reserved, 0)
+
+
+def reserve_stock(inventory: Inventory, quantity: int) -> None:
+    """Hold stock for an unpaid order. The caller has locked the row and checked availability."""
+    if quantity > available(inventory):
+        raise Conflict("Not enough stock to reserve.")
+    inventory.reserved += quantity
+
+
+def release_stock(inventory: Inventory, quantity: int) -> None:
+    inventory.reserved = max(inventory.reserved - quantity, 0)
+
+
+def record_sale(db: Session, inventory: Inventory, quantity: int, note: str) -> None:
+    """A paid order: its reserved stock leaves the shelf. Does not commit."""
+    release_stock(inventory, quantity)
+    _apply(
+        db,
+        inventory,
+        staff=None,
+        reason=StockReason.SALE,
+        new_on_hand=inventory.on_hand - quantity,
+        note=note,
+    )
+
+
 def _locked_inventory(db: Session, product_id: int) -> Inventory:
     # FOR UPDATE: two staff adjusting the same product at once are applied one after the other.
     inventory = db.scalar(
-        select(Inventory).where(Inventory.product_id == product_id).with_for_update()
+        select(Inventory)
+        .where(Inventory.product_id == product_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if inventory is None:
         raise NotFound("Product not found.")

@@ -31,6 +31,7 @@ class StockReason(enum.StrEnum):
     RETURNED = "returned"
     CORRECTION = "correction"
     IMPORT = "import"
+    SALE = "sale"
 
 
 product_tags = Table(

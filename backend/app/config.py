@@ -1,9 +1,12 @@
+from decimal import Decimal
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEV_JWT_SECRET = "dev-only-secret-change-me-in-production"
+DEV_PAYHERE_SECRET = "dev-only-payhere-secret"
 
 
 class Settings(BaseSettings):
@@ -34,12 +37,43 @@ class Settings(BaseSettings):
     jwt_secret: str = DEV_JWT_SECRET
     jwt_expire_minutes: int = 60
 
+    # Where this API and the storefront are reached from a browser. Used for payment and
+    # email links.
+    api_public_url: str = "http://localhost:8000"
+    storefront_url: str = "http://localhost:3000"
+
+    # Charges, in rupees.
+    delivery_fee_colombo: Decimal = Decimal("400")
+    delivery_fee_other: Decimal = Decimal("650")
+    free_delivery_over: Decimal = Decimal("10000")
+    gift_wrap_fee: Decimal = Decimal("250")
+    # How long checkout holds stock for an unpaid order.
+    reservation_minutes: int = 30
+
+    # "fake" is a built-in stand-in gateway for local development; "payhere" is the real one.
+    payment_provider: Literal["fake", "payhere"] = "fake"
+    payhere_merchant_id: str = "1200000"
+    payhere_merchant_secret: str = DEV_PAYHERE_SECRET
+    payhere_sandbox: bool = True
+
+    # Outgoing email. Locally this is Mailpit from docker-compose.yml.
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_starttls: bool = False
+    email_from: str = "Daisytoons <orders@daisytoons.lk>"
+
     @model_validator(mode="after")
-    def _require_real_secret_in_production(self) -> "Settings":
-        if self.environment == "production" and (
-            self.jwt_secret == DEV_JWT_SECRET or len(self.jwt_secret) < 32
-        ):
+    def _require_real_secrets_in_production(self) -> "Settings":
+        if self.environment != "production":
+            return self
+        if self.jwt_secret == DEV_JWT_SECRET or len(self.jwt_secret) < 32:
             raise ValueError("JWT_SECRET must be set to at least 32 characters in production")
+        if self.payment_provider != "payhere":
+            raise ValueError("PAYMENT_PROVIDER must be payhere in production")
+        if self.payhere_merchant_secret == DEV_PAYHERE_SECRET:
+            raise ValueError("PAYHERE_MERCHANT_SECRET must be set in production")
         return self
 
 
