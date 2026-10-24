@@ -1,4 +1,5 @@
 import secrets
+from decimal import Decimal
 
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, selectinload
@@ -32,20 +33,54 @@ def _tag_filter(kind: TagKind, slug: str):
     return Product.tags.any((Tag.kind == kind) & (Tag.slug == slug))
 
 
+SORTS = {
+    "name": (Product.name,),
+    "newest": (Product.created_at.desc(), Product.id.desc()),
+    "price_asc": (Product.price, Product.name),
+    "price_desc": (Product.price.desc(), Product.name),
+}
+
+
 def list_active_products(
-    db: Session, *, occasion: str | None = None, recipient: str | None = None
+    db: Session,
+    *,
+    occasion: str | None = None,
+    recipient: str | None = None,
+    q: str | None = None,
+    min_price: Decimal | None = None,
+    max_price: Decimal | None = None,
+    sort: str = "name",
 ) -> list[Product]:
     query = select(Product).where(Product.is_active)
     if occasion:
         query = query.where(_tag_filter(TagKind.OCCASION, occasion))
     if recipient:
         query = query.where(_tag_filter(TagKind.RECIPIENT, recipient))
-    return list(db.scalars(_with_details(query).order_by(Product.name)))
+    for word in (q or "").split()[:8]:
+        # Every word must appear in the name, description or a tag name.
+        pattern = f"%{_escape_like(word)}%"
+        query = query.where(
+            Product.name.ilike(pattern, escape="\\")
+            | Product.description.ilike(pattern, escape="\\")
+            | Product.tags.any(Tag.name.ilike(pattern, escape="\\"))
+        )
+    if min_price is not None:
+        query = query.where(Product.price >= min_price)
+    if max_price is not None:
+        query = query.where(Product.price <= max_price)
+    query = _with_details(query).options(selectinload(Product.inventory))
+    return list(db.scalars(query.order_by(*SORTS[sort])))
+
+
+def _escape_like(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def get_active_product_by_slug(db: Session, slug: str) -> Product:
     product = db.scalar(
-        _with_details(select(Product).where(Product.slug == slug, Product.is_active))
+        _with_details(select(Product).where(Product.slug == slug, Product.is_active)).options(
+            selectinload(Product.inventory)
+        )
     )
     if product is None:
         raise NotFound("Product not found.")

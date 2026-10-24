@@ -47,12 +47,12 @@ Locally, payments go through a built-in fake gateway with Pay, Cancel and Fail b
 The web apps run outside Docker:
 
 ```bash
-cd frontend && npm install && npm run dev   # http://localhost:3000
+cd frontend && npm install && npm run dev   # the shop, http://localhost:3000
 cd console && npm install && npm run dev    # http://localhost:3001
 ```
 
 ## Checks
 
-CI runs on every push (`.github/workflows/ci.yml`): backend lint, format and tests against Postgres; lint, typecheck and build for both web apps; and a smoke test that starts the Compose stack, imports the sample products and buys one (`scripts/smoke-checkout.sh`). To run the same checks locally, see `backend/README.md`, or run `npm run lint`, `npm run typecheck` and `npm run build` in each web app.
+CI runs on every push (`.github/workflows/ci.yml`): backend lint, format and tests against Postgres; lint, typecheck and build for both web apps; and a smoke test that starts the Compose stack, imports the sample products, buys one through the API (`scripts/smoke-checkout.sh`), then buys through the storefront in a phone-sized browser as a guest and as a customer (`frontend/e2e/shop.mjs`). To run the same checks locally, see `backend/README.md`, or run `npm run lint`, `npm run typecheck` and `npm run build` in each web app.
 
 See `docs/Gift Shop Build Plan.pdf` for the full build plan.

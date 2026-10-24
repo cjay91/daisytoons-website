@@ -131,6 +131,19 @@ class ProductOut(ORMModel):
         return get_settings().currency
 
 
+class StoreProductOut(ProductOut):
+    """A product as the storefront shows it, with how many can be bought right now."""
+
+    inventory: "InventoryOut | None" = Field(default=None, exclude=True)
+
+    @computed_field
+    @property
+    def available(self) -> int:
+        if self.inventory is None:
+            return 0
+        return max(self.inventory.on_hand - self.inventory.reserved, 0)
+
+
 class InventoryUpdate(BaseModel):
     """Stock on hand is not here: it changes only through stock adjustments, which are logged."""
 
@@ -198,6 +211,8 @@ class CartOut(BaseModel):
     gift_wrap: bool
     gift_message: str
     gift_wrap_fee: Decimal
+    # What gift wrap costs when it's switched on.
+    gift_wrap_price: Decimal
     # Delivery depends on the district, so the cart shows both prices.
     delivery_fee_colombo: Decimal
     delivery_fee_other: Decimal
@@ -261,6 +276,20 @@ class OrderItemOut(ORMModel):
     line_total: Decimal
 
 
+class OrderEventOut(ORMModel):
+    to_status: OrderStatus
+    note: str
+    created_at: datetime
+
+
+class OrderSummaryOut(ORMModel):
+    order_number: str
+    status: OrderStatus
+    total: Decimal
+    item_count: int
+    created_at: datetime
+
+
 class OrderOut(ORMModel):
     order_number: str
     status: OrderStatus
@@ -278,8 +307,44 @@ class OrderOut(ORMModel):
     expires_at: datetime | None
     paid_at: datetime | None
     created_at: datetime
+    # Status history, oldest first: what the customer sees as order tracking.
+    events: list[OrderEventOut]
+    # The private key for the order page; only shown to the customer who owns the order.
+    access_key: str | None = None
 
     @computed_field
     @property
     def currency(self) -> str:
         return get_settings().currency
+
+
+class AddressIn(BaseModel):
+    label: str | None = Field(default=None, max_length=50)
+    recipient_name: str = Field(min_length=1, max_length=200)
+    phone: str | None = Field(default=None, max_length=32)
+    line1: str = Field(min_length=1, max_length=200)
+    line2: str | None = Field(default=None, max_length=200)
+    city: str = Field(min_length=1, max_length=100)
+    district: str
+    postal_code: str | None = Field(default=None, max_length=20)
+    is_default: bool = False
+
+    @model_validator(mode="after")
+    def _known_district(self) -> "AddressIn":
+        if self.district not in DISTRICTS:
+            raise ValueError(f"District must be one of: {', '.join(DISTRICTS)}.")
+        return self
+
+
+class AddressOut(ORMModel):
+    id: int
+    label: str | None
+    recipient_name: str
+    phone: str | None
+    line1: str
+    line2: str | None
+    city: str
+    # Stored in the address's region column.
+    district: str | None = Field(validation_alias="region")
+    postal_code: str | None
+    is_default: bool
