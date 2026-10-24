@@ -2,6 +2,13 @@
 
 Choices we may want to revisit, with the reason we made them. Newest first.
 
+## 2026-10-24: Part 5 storefront
+
+- **The storefront's server talks to the API; browsers don't.** Login and cart tokens live in httpOnly cookies set by Server Actions, so a script injected into a page can't steal them. It also means the API needs no CORS opening for the shop.
+- **Catalog pages are cached for minutes, not built ahead of time.** The build never needs the API, and new products appear within a few minutes. Stock on a product page can be briefly out of date, but the cart and checkout always check live.
+- **Logins last 60 minutes for now.** Refresh tokens ("stay logged in") are still to do.
+- **Search is simple word matching** in names, descriptions and tags. With about 100 products that is fast and predictable; smarter search arrives with the knowledge base in Part 9.
+
 ## 2026-10-24: Part 4 cart, checkout and payments
 
 - **PayHere is the payment gateway**: Sri Lankan, takes LKR, cards and local wallets, with a hosted payment page so card details never touch our site. Its signatures are MD5-based, which is PayHere's scheme, not our choice; we also check the merchant, amount and currency on every notification.

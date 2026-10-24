@@ -76,6 +76,22 @@ jobs:
         run: scripts/smoke-checkout.sh
       - name: The background worker is running
         run: docker compose ps --status running --services | grep -qx worker
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: A guest and a customer buy gifts on the storefront, on a phone-sized screen
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run build
+          npm start > /tmp/storefront.log 2>&1 &
+          for i in $(seq 1 30); do curl --silent --fail --output /dev/null http://localhost:3000/ && break; sleep 1; done
+          node e2e/shop.mjs
+      - if: failure()
+        run: cat /tmp/storefront.log || true
       - if: failure()
         run: docker compose logs
       - if: always()

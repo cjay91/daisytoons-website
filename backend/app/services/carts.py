@@ -135,6 +135,7 @@ def cart_out(db: Session, cart: Cart | None) -> CartOut:
         gift_wrap=gift_wrap,
         gift_message=cart.gift_message if cart else "",
         gift_wrap_fee=gift_wrap_fee(settings, gift_wrap),
+        gift_wrap_price=gift_wrap_fee(settings, True),
         delivery_fee_colombo=delivery_fee(settings, subtotal, "Colombo"),
         delivery_fee_other=delivery_fee(settings, subtotal, "Kandy"),
         free_delivery_over=money(settings.free_delivery_over),
