@@ -20,4 +20,18 @@ def test_production_requires_a_real_jwt_secret(monkeypatch):
         Settings()
 
     monkeypatch.setenv("JWT_SECRET", "x" * 32)
+    monkeypatch.setenv("PAYMENT_PROVIDER", "payhere")
+    monkeypatch.setenv("PAYHERE_MERCHANT_SECRET", "real-secret")
     assert Settings().jwt_secret == "x" * 32
+
+
+def test_production_requires_the_real_payment_gateway(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("JWT_SECRET", "x" * 32)
+
+    with pytest.raises(ValueError, match="PAYMENT_PROVIDER"):
+        Settings()
+
+    monkeypatch.setenv("PAYMENT_PROVIDER", "payhere")
+    with pytest.raises(ValueError, match="PAYHERE_MERCHANT_SECRET"):
+        Settings()

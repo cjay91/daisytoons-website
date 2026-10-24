@@ -72,6 +72,10 @@ jobs:
           url=$(curl --fail --silent "http://localhost:8000/products?occasion=birthday" \
             | python3 -c 'import json, sys; print(json.load(sys.stdin)[0]["images"][0]["url"])')
           curl --fail --silent --output /dev/null "$url"
+      - name: A payment notified three times gives one paid order, one sale and one email
+        run: scripts/smoke-checkout.sh
+      - name: The background worker is running
+        run: docker compose ps --status running --services | grep -qx worker
       - if: failure()
         run: docker compose logs
       - if: always()

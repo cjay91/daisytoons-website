@@ -26,7 +26,7 @@ cp .env.example .env
 docker compose up
 ```
 
-That starts Postgres (port 5432), Redis (6379), image storage (8333) and the API at http://localhost:8000. The API applies database migrations when it starts. Check it with http://localhost:8000/health, or browse the API docs at http://localhost:8000/docs. The API reloads when you edit files in `backend/app/`.
+That starts Postgres (port 5432), Redis (6379), image storage (8333), a test email inbox (Mailpit, http://localhost:8025), a background worker, and the API at http://localhost:8000. The API applies database migrations when it starts. Check it with http://localhost:8000/health, or browse the API docs at http://localhost:8000/docs. The API reloads when you edit files in `backend/app/`.
 
 To log in to staff endpoints, create the first admin account:
 
@@ -42,6 +42,8 @@ docker compose exec api python -m app.cli import-products /templates/products-sa
 
 To load your own products, copy `docs/templates/products-template.csv`, fill it in, and put it with your photos in an `import/` folder at the repo root (git ignores it). Then run `import-products /import/products.csv --images /import` the same way. Add `--dry-run` to check the file first.
 
+Locally, payments go through a built-in fake gateway with Pay, Cancel and Fail buttons, and every email the shop sends lands in Mailpit at http://localhost:8025. The worker cancels unpaid orders after 30 minutes and frees their stock; run that by hand with `python -m app.cli release-expired-orders`. With products imported, `scripts/smoke-checkout.sh` runs a whole purchase against the stack.
+
 The web apps run outside Docker:
 
 ```bash
@@ -51,6 +53,6 @@ cd console && npm install && npm run dev    # http://localhost:3001
 
 ## Checks
 
-CI runs on every push (`.github/workflows/ci.yml`): backend lint, format and tests against Postgres; lint, typecheck and build for both web apps; and a smoke test that starts the Compose stack and calls `/health`. To run the same checks locally, see `backend/README.md`, or run `npm run lint`, `npm run typecheck` and `npm run build` in each web app.
+CI runs on every push (`.github/workflows/ci.yml`): backend lint, format and tests against Postgres; lint, typecheck and build for both web apps; and a smoke test that starts the Compose stack, imports the sample products and buys one (`scripts/smoke-checkout.sh`). To run the same checks locally, see `backend/README.md`, or run `npm run lint`, `npm run typecheck` and `npm run build` in each web app.
 
 See `docs/Gift Shop Build Plan.pdf` for the full build plan.

@@ -21,3 +21,10 @@ def test_create_admin_rejects_short_password(db: Session, monkeypatch):
     monkeypatch.setenv("ADMIN_PASSWORD", "short")
 
     assert cli.main(["create-admin", "--email", "a@example.com", "--name", "A"]) == 1
+
+
+def test_release_expired_orders(db: Session, monkeypatch, capsys):
+    monkeypatch.setattr(cli, "SessionLocal", lambda: db)
+
+    assert cli.main(["release-expired-orders"]) == 0
+    assert "Released 0 expired orders." in capsys.readouterr().out
