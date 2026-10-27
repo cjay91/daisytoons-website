@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, Response, UploadFile, status
+from fastapi import APIRouter, File, Form, Query, Response, UploadFile, status
 
 from app.api.deps import DB, CurrentStaff, FileStorage
 from app.config import get_settings
@@ -16,6 +16,7 @@ from app.schemas import (
     ProductUpdate,
     StaffCreate,
     StaffOut,
+    StaffProductOut,
     StockAdjustmentCreate,
     StockAdjustmentOut,
     TagCreate,
@@ -50,6 +51,19 @@ def create_member(db: DB, staff: CurrentStaff, body: StaffCreate) -> StaffOut:
 
 
 # Products
+
+
+@router.get("/products")
+def list_products(
+    db: DB, staff: CurrentStaff, q: Annotated[str | None, Query(max_length=100)] = None
+) -> list[StaffProductOut]:
+    """Every product, including ones no longer sold, with stock."""
+    return [StaffProductOut.model_validate(p) for p in products.list_staff_products(db, staff, q=q)]
+
+
+@router.get("/products/{product_id}")
+def get_product(db: DB, staff: CurrentStaff, product_id: int) -> StaffProductOut:
+    return StaffProductOut.model_validate(products.get_staff_product(db, staff, product_id))
 
 
 @router.post("/products", status_code=status.HTTP_201_CREATED)

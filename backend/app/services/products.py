@@ -259,3 +259,32 @@ def delete_image(db: Session, storage: Storage, actor: Staff, product_id: int, i
     _renumber(product.images)
     db.commit()
     storage.delete(image.storage_key)
+
+
+def list_staff_products(
+    db: Session, actor: Staff, *, q: str | None = None, include_inactive: bool = True
+) -> list[Product]:
+    """Every product, sold or not, with its stock. Searches SKU and name."""
+    require(actor, Permission.VIEW_CATALOG, "Your role cannot view products.")
+    query = select(Product)
+    if not include_inactive:
+        query = query.where(Product.is_active)
+    for word in (q or "").split()[:8]:
+        pattern = f"%{_escape_like(word)}%"
+        query = query.where(
+            Product.name.ilike(pattern, escape="\\") | Product.sku.ilike(pattern, escape="\\")
+        )
+    query = _with_details(query).options(selectinload(Product.inventory))
+    return list(db.scalars(query.order_by(Product.name, Product.id)))
+
+
+def get_staff_product(db: Session, actor: Staff, product_id: int) -> Product:
+    require(actor, Permission.VIEW_CATALOG, "Your role cannot view products.")
+    product = db.scalar(
+        _with_details(select(Product).where(Product.id == product_id)).options(
+            selectinload(Product.inventory)
+        )
+    )
+    if product is None:
+        raise NotFound("Product not found.")
+    return product

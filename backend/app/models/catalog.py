@@ -32,6 +32,8 @@ class StockReason(enum.StrEnum):
     CORRECTION = "correction"
     IMPORT = "import"
     SALE = "sale"
+    # A paid order was cancelled before it shipped, so its items go back on the shelf.
+    ORDER_CANCELLED = "order_cancelled"
 
 
 product_tags = Table(

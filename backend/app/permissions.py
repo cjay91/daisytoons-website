@@ -11,12 +11,27 @@ class Permission(enum.StrEnum):
     MANAGE_PRODUCTS = "manage_products"  # create products, change details and prices
     MANAGE_STOCK = "manage_stock"  # on hand, reorder point, bin location
     VIEW_CATALOG = "view_catalog"
+    VIEW_ORDERS = "view_orders"
+    FULFIL_ORDERS = "fulfil_orders"  # packing, shipping, marking delivered
+    SUPPORT_ORDERS = "support_orders"  # resend emails, clear an order's attention flag
+    REFUND_ORDERS = "refund_orders"  # cancel a paid order, record refunds
+    MANAGE_PURCHASING = "manage_purchasing"  # suppliers and purchase orders
+    VIEW_REPORTS = "view_reports"
 
 
 ROLE_PERMISSIONS: dict[StaffRole, frozenset[Permission]] = {
     StaffRole.ADMIN: frozenset(Permission),
-    StaffRole.PACKER: frozenset({Permission.MANAGE_STOCK, Permission.VIEW_CATALOG}),
-    StaffRole.SUPPORT: frozenset({Permission.VIEW_CATALOG}),
+    StaffRole.PACKER: frozenset(
+        {
+            Permission.MANAGE_STOCK,
+            Permission.VIEW_CATALOG,
+            Permission.VIEW_ORDERS,
+            Permission.FULFIL_ORDERS,
+        }
+    ),
+    StaffRole.SUPPORT: frozenset(
+        {Permission.VIEW_CATALOG, Permission.VIEW_ORDERS, Permission.SUPPORT_ORDERS}
+    ),
 }
 
 

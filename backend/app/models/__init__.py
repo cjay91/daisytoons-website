@@ -20,6 +20,8 @@ from app.models.orders import (
     OrderItem,
     OrderStatus,
     PaymentEvent,
+    Refund,
+    Shipment,
 )
 from app.models.suppliers import PurchaseOrder, PurchaseOrderItem, PurchaseOrderStatus, Supplier
 
@@ -40,6 +42,8 @@ __all__ = [
     "PurchaseOrder",
     "PurchaseOrderItem",
     "PurchaseOrderStatus",
+    "Refund",
+    "Shipment",
     "Staff",
     "StaffRole",
     "StockAdjustment",

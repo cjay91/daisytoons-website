@@ -52,6 +52,21 @@ def record_sale(db: Session, inventory: Inventory, quantity: int, note: str) -> 
     )
 
 
+def add_stock(
+    db: Session, inventory: Inventory, staff: Staff, quantity: int, reason: StockReason, note: str
+) -> None:
+    """Stock arriving: a delivery from a supplier, or items from a cancelled or returned order.
+    Does not commit."""
+    _apply(
+        db,
+        inventory,
+        staff=staff,
+        reason=reason,
+        new_on_hand=inventory.on_hand + quantity,
+        note=note,
+    )
+
+
 def _locked_inventory(db: Session, product_id: int) -> Inventory:
     # FOR UPDATE: two staff adjusting the same product at once are applied one after the other.
     inventory = db.scalar(

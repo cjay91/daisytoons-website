@@ -7,6 +7,7 @@ from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, String, T
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.models.accounts import Staff
 from app.models.base import Base, TimestampMixin, str_enum
 from app.models.catalog import Product
 
@@ -94,6 +95,12 @@ class Order(TimestampMixin, Base):
     events: Mapped[list["OrderEvent"]] = relationship(
         back_populates="order", cascade="all, delete-orphan", order_by="OrderEvent.id"
     )
+    shipment: Mapped["Shipment | None"] = relationship(
+        back_populates="order", cascade="all, delete-orphan"
+    )
+    refunds: Mapped[list["Refund"]] = relationship(
+        back_populates="order", cascade="all, delete-orphan", order_by="Refund.id"
+    )
 
 
 class OrderItem(Base):
@@ -124,9 +131,12 @@ class OrderEvent(Base):
     )
     to_status: Mapped[OrderStatus] = mapped_column(str_enum(OrderStatus, "order_event_to_status"))
     note: Mapped[str] = mapped_column(Text, default="")
+    # Who made the change; empty when the system did (checkout, payment, expiry).
+    staff_id: Mapped[int | None] = mapped_column(ForeignKey("staff.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     order: Mapped[Order] = relationship(back_populates="events")
+    staff: Mapped[Staff | None] = relationship()
 
 
 class PaymentEvent(Base):
@@ -146,3 +156,44 @@ class PaymentEvent(Base):
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class Shipment(Base):
+    """How a packed order left the shop: the courier and its tracking number."""
+
+    __tablename__ = "shipments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), unique=True)
+    courier: Mapped[str] = mapped_column(String(50))
+    tracking_number: Mapped[str] = mapped_column(String(100))
+    tracking_url: Mapped[str | None] = mapped_column(String(500))
+    staff_id: Mapped[int | None] = mapped_column(ForeignKey("staff.id", ondelete="SET NULL"))
+    shipped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When the customer was emailed the tracking details.
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    order: Mapped[Order] = relationship(back_populates="shipment")
+    staff: Mapped[Staff | None] = relationship()
+
+
+class Refund(Base):
+    """Money given back. The refund itself is made in the payment gateway's dashboard; this
+    records it against the order."""
+
+    __tablename__ = "refunds"
+    __table_args__ = (CheckConstraint("amount > 0", name="amount_positive"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    reason: Mapped[str] = mapped_column(Text)
+    # The gateway's refund reference, so it can be matched up later.
+    reference: Mapped[str | None] = mapped_column(String(100))
+    restocked: Mapped[bool] = mapped_column(default=False)
+    staff_id: Mapped[int | None] = mapped_column(ForeignKey("staff.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    order: Mapped[Order] = relationship(back_populates="refunds")
+    staff: Mapped[Staff | None] = relationship()
