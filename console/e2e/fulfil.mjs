@@ -29,6 +29,11 @@ async function see(locator, message) {
   console.log(`ok: ${message}`);
 }
 
+// Next keeps recently visited pages in the DOM, hidden, so match only the visible field.
+function field(page, label) {
+  return page.getByLabel(label, { exact: true }).filter({ visible: true });
+}
+
 /** The current 6-digit code for a base32 secret (RFC 6238), as an authenticator app shows. */
 function totp(secret, at = Date.now()) {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -176,27 +181,27 @@ try {
   await see(page.getByText(packerEmail), "packer added");
   await page.getByRole("button", { name: "Log out" }).click();
   await page.waitForURL(/\/login/);
-  await page.getByLabel("Email").fill(packerEmail);
-  await page.getByLabel("Password").fill("packer-password-123");
+  await field(page, "Email").fill(packerEmail);
+  await field(page, "Password").fill("packer-password-123");
   await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL(`${CONSOLE}/`);
   await page.goto(`${CONSOLE}/security`);
   await page.getByRole("button", { name: "Set up two-step login" }).click();
   const key = (await page.getByText(/Enter this key instead/).locator("span").textContent()).replace(/\s/g, "");
-  await page.getByLabel("Code from the app").fill(totp(key));
+  await field(page, "Code from the app").fill(totp(key));
   await page.getByRole("button", { name: "Turn on" }).click();
   await page.waitForURL(`${CONSOLE}/`);
   await page.goto(`${CONSOLE}/security`);
   await see(page.getByText("Two-step login is on"), "two-step login turned on");
   await page.getByRole("button", { name: "Log out" }).click();
   await page.waitForURL(/\/login/);
-  await page.getByLabel("Email").fill(packerEmail);
-  await page.getByLabel("Password").fill("packer-password-123");
+  await field(page, "Email").fill(packerEmail);
+  await field(page, "Password").fill("packer-password-123");
   await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL(/\/login\/code/);
   // A code works only once, and the setup just used this one, so wait for the next.
   await page.waitForTimeout(30000 - (Date.now() % 30000) + 500);
-  await page.getByLabel("Code").fill(totp(key));
+  await field(page, "Code").fill(totp(key));
   await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL(`${CONSOLE}/`);
   await see(page.getByText("E2E Packer"), "logged in with a code from the app");
