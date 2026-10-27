@@ -56,6 +56,26 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
 
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Production images build
+        run: |
+          docker build -t daisytoons-storefront --build-arg SITE_URL=https://daisytoons.lk \
+            --build-arg IMAGE_BASE_URL=https://images.daisytoons.lk frontend
+          docker build -t daisytoons-console --build-arg IMAGE_BASE_URL=https://images.daisytoons.lk console
+          docker build -t daisytoons-backup deploy/backup
+      - name: The production Compose file is complete
+        run: |
+          sed -E 's/^([A-Z0-9_]+)=.*/\1=ci-value/' deploy/env.example > /tmp/prod.env
+          docker compose -f deploy/docker-compose.prod.yml --env-file /tmp/prod.env config --quiet
+      - name: The storefront image serves pages
+        run: |
+          docker run -d --name shop -p 3000:3000 -e API_URL=http://localhost:9 daisytoons-storefront
+          for i in $(seq 1 20); do curl --silent --output /dev/null http://localhost:3000/shipping && break; sleep 1; done
+          curl --fail --silent --output /dev/null http://localhost:3000/shipping
+
   compose:
     runs-on: ubuntu-latest
     steps:
@@ -75,7 +95,12 @@ jobs:
       - name: A payment notified three times gives one paid order, one sale and one email
         run: scripts/smoke-checkout.sh
       - name: The background worker is running
-        run: docker compose ps --status running --services | grep -qx worker
+        run: |
+          docker compose ps --status running --services | grep -qx worker
+          for i in $(seq 1 30); do curl --silent --fail http://localhost:8000/health/ready && break; sleep 2; done
+          curl --fail --silent http://localhost:8000/health/ready
+      - name: A backup restores into a fresh database with the same data
+        run: scripts/test-backup-restore.sh
       - uses: actions/setup-node@v5
         with:
           node-version: 22

@@ -32,9 +32,10 @@ export async function Nav() {
           ))}
         </nav>
         <form action={logout} className="ml-auto flex items-center gap-3 text-sm">
-          <span className="text-muted">
+          <Link href="/security" className="text-muted hover:text-foreground">
             {staff.full_name} · <span className="capitalize">{staff.role}</span>
-          </span>
+            {!staff.two_factor_enabled && <span className="ml-1 text-danger">· set up two-step login</span>}
+          </Link>
           <button className="btn-outline py-1">Log out</button>
         </form>
       </div>

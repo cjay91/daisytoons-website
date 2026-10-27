@@ -1,0 +1,170 @@
+# The live shop on one server. Run from the repo root:
+#   docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d --build
+# See deploy/README.md for the first-time setup.
+#
+# Only Caddy is reachable from the internet (ports 80 and 443). It gets HTTPS certificates
+# automatically and passes requests to the shop, the console and the API.
+
+name: daisytoons
+
+x-backend-env: &backend-env
+  ENVIRONMENT: production
+  DATABASE_URL: postgresql+psycopg://daisytoons:${POSTGRES_PASSWORD:?}@db:5432/daisytoons
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET: ${JWT_SECRET:?}
+  REQUIRE_STAFF_TWO_FACTOR: "true"
+  CORS_ORIGINS: "[]"
+  S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:?}
+  S3_REGION: ${S3_REGION:-auto}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?}
+  S3_BUCKET: ${S3_BUCKET:?}
+  S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:?}
+  PAYMENT_PROVIDER: payhere
+  PAYHERE_MERCHANT_ID: ${PAYHERE_MERCHANT_ID:?}
+  PAYHERE_MERCHANT_SECRET: ${PAYHERE_MERCHANT_SECRET:?}
+  PAYHERE_SANDBOX: ${PAYHERE_SANDBOX:-false}
+  API_PUBLIC_URL: https://${API_DOMAIN:?}
+  STOREFRONT_URL: https://${SHOP_DOMAIN:?}
+  SMTP_HOST: ${SMTP_HOST:?}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USERNAME: ${SMTP_USERNAME:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+  EMAIL_FROM: ${EMAIL_FROM:?}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SHOP_DOMAIN: ${SHOP_DOMAIN:?}
+      CONSOLE_DOMAIN: ${CONSOLE_DOMAIN:?}
+      API_DOMAIN: ${API_DOMAIN:?}
+      ACME_EMAIL: ${ACME_EMAIL:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - storefront
+      - console
+      - api
+
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: daisytoons
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: daisytoons
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ../backend/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U daisytoons -d daisytoons"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ../backend
+    restart: unless-stopped
+    # Migrations run before the API starts. --proxy-headers takes the visitor's address from
+    # Caddy (or the web apps' servers, which pass it on); nothing else can reach the API.
+    command: >-
+      sh -c "alembic upgrade head && python -m app.cli init-storage &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+      --proxy-headers --forwarded-allow-ips='*'"
+    environment: *backend-env
+    volumes:
+      - ../import:/import:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    build: ../backend
+    restart: unless-stopped
+    command: python -m app.worker
+    environment: *backend-env
+    depends_on:
+      api:
+        condition: service_healthy
+
+  storefront:
+    build:
+      context: ../frontend
+      args:
+        SITE_URL: https://${SHOP_DOMAIN:?}
+        IMAGE_BASE_URL: ${S3_PUBLIC_BASE_URL:?}
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:8000
+      SITE_URL: https://${SHOP_DOMAIN:?}
+      SHOP_EMAIL: ${SHOP_EMAIL:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    depends_on:
+      api:
+        condition: service_healthy
+
+  console:
+    build:
+      context: ../console
+      args:
+        IMAGE_BASE_URL: ${S3_PUBLIC_BASE_URL:?}
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:8000
+      STOREFRONT_URL: https://${SHOP_DOMAIN:?}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Nightly database backup to the backup bucket (02:30 Sri Lanka time), kept for 30 days.
+  backup:
+    build: ./backup
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://daisytoons:${POSTGRES_PASSWORD:?}@db:5432/daisytoons
+      BACKUP_BUCKET: ${BACKUP_BUCKET:?}
+      BACKUP_S3_ENDPOINT: ${S3_ENDPOINT_URL:?}
+      AWS_ACCESS_KEY_ID: ${BACKUP_ACCESS_KEY:?}
+      AWS_SECRET_ACCESS_KEY: ${BACKUP_SECRET_KEY:?}
+      AWS_DEFAULT_REGION: ${S3_REGION:-auto}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+      BACKUP_PING_URL: ${BACKUP_PING_URL:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

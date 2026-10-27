@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Response, status
 
-from app.api.deps import DB, CurrentCustomer
+from app.api.deps import DB, ClientIP, CurrentCustomer, RateCounter
+from app.ratelimit import LOGIN_PER_ACCOUNT, LOGIN_PER_IP, REGISTER_PER_IP, check
 from app.schemas import (
     AddressIn,
     AddressOut,
@@ -18,13 +19,16 @@ router = APIRouter(tags=["customer auth"])
 
 
 @router.post("/auth/register", status_code=status.HTTP_201_CREATED)
-def register(db: DB, body: CustomerRegister) -> CustomerOut:
+def register(db: DB, counter: RateCounter, ip: ClientIP, body: CustomerRegister) -> CustomerOut:
+    check(counter, REGISTER_PER_IP, ip)
     customer = accounts.register_customer(db, **body.model_dump())
     return CustomerOut.model_validate(customer)
 
 
 @router.post("/auth/login")
-def login(db: DB, body: LoginRequest) -> Token:
+def login(db: DB, counter: RateCounter, ip: ClientIP, body: LoginRequest) -> Token:
+    check(counter, LOGIN_PER_IP, "customer", ip)
+    check(counter, LOGIN_PER_ACCOUNT, "customer", ip, body.email)
     customer = accounts.authenticate_customer(db, email=body.email, password=body.password)
     return Token(access_token=create_access_token("customer", customer.id))
 

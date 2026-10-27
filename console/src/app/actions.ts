@@ -2,9 +2,10 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
+import QRCode from "qrcode";
 
 import { api, ApiError } from "@/lib/api";
-import { clearLogin, setLogin, staffApi } from "@/lib/session";
+import { clearLogin, getChallenge, setChallenge, setLogin, staffApi } from "@/lib/session";
 import type { Product, PurchaseOrder, Supplier } from "@/lib/types";
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string>; ok?: boolean; message?: string };
@@ -43,18 +44,80 @@ async function attempt(call: () => Promise<unknown>, message?: string): Promise<
 
 // Login
 
+function safeNext(form: FormData): string {
+  const next = text(form, "next");
+  return next.startsWith("/") && !next.startsWith("//") ? next : "/";
+}
+
+type LoginResult = { access_token: string | null; two_factor_required: boolean; challenge_token: string | null };
+
 export async function login(_: FormState, form: FormData): Promise<FormState> {
+  let result: LoginResult;
   try {
-    const { access_token } = await api<{ access_token: string }>("/staff/auth/login", {
+    result = await api<LoginResult>("/staff/auth/login", {
       method: "POST",
+      forwardIp: true,
       body: { email: text(form, "email"), password: String(form.get("password") ?? "") },
     });
-    await setLogin(access_token);
   } catch (error) {
     return failure(error);
   }
-  const next = text(form, "next");
-  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/");
+  if (result.two_factor_required && result.challenge_token) {
+    await setChallenge(result.challenge_token);
+    redirect(`/login/code?next=${encodeURIComponent(safeNext(form))}`);
+  }
+  await setLogin(result.access_token!);
+  redirect(safeNext(form));
+}
+
+export async function loginCode(_: FormState, form: FormData): Promise<FormState> {
+  const challenge = await getChallenge();
+  if (!challenge) return { error: "Your login timed out. Go back and enter your password again." };
+  try {
+    const { access_token } = await api<{ access_token: string }>("/staff/auth/two-factor", {
+      method: "POST",
+      forwardIp: true,
+      body: { challenge_token: challenge, code: text(form, "code") },
+    });
+    await setLogin(access_token);
+    await setChallenge(null);
+  } catch (error) {
+    return failure(error);
+  }
+  redirect(safeNext(form));
+}
+
+// Two-step login setup
+
+export type SetupState = FormState & { secret?: string; qr?: string };
+
+export async function startTwoFactor(): Promise<SetupState> {
+  try {
+    const { secret, otpauth_url } = await staffApi<{ secret: string; otpauth_url: string }>(
+      "/staff/me/two-factor/setup",
+      { method: "POST" },
+    );
+    const qr = await QRCode.toString(otpauth_url, { type: "svg", margin: 1, width: 200 });
+    return { secret, qr };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function enableTwoFactor(_: FormState, form: FormData): Promise<FormState> {
+  try {
+    await staffApi("/staff/me/two-factor/enable", { method: "POST", body: { code: text(form, "code") } });
+  } catch (error) {
+    return failure(error);
+  }
+  redirect("/");
+}
+
+export async function resetTwoFactor(_: FormState, form: FormData): Promise<FormState> {
+  return attempt(
+    () => staffApi(`/staff/members/${text(form, "staff_id")}/reset-two-factor`, { method: "POST" }),
+    "Two-step login reset. They set it up again at their next login.",
+  );
 }
 
 export async function logout() {

@@ -10,8 +10,10 @@ from app.config import get_settings
 from app.db import SessionLocal
 from app.errors import AppError
 from app.importer import ImportFailed, import_products
-from app.services.accounts import create_first_admin
+from app.models import Staff
+from app.services.accounts import create_first_admin, normalize_email
 from app.services.orders import release_expired_orders
+from app.services.two_factor import clear as clear_two_factor
 from app.storage import S3Storage, get_storage
 
 
@@ -64,6 +66,19 @@ def _release_expired_orders(_: argparse.Namespace) -> int:
     return 0
 
 
+def _reset_two_factor(args: argparse.Namespace) -> int:
+    """For an admin who lost their phone and has no other admin to reset it in the console."""
+    with SessionLocal() as db:
+        staff = db.query(Staff).filter_by(email=normalize_email(args.email)).one_or_none()
+        if staff is None:
+            print(f"No staff member with email {args.email}.", file=sys.stderr)
+            return 1
+        clear_two_factor(staff)
+        db.commit()
+    print(f"Two-step login reset for {args.email}. They set it up again at their next login.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -86,6 +101,12 @@ def main(argv: list[str] | None = None) -> int:
         "release-expired-orders", help="Cancel unpaid orders past their time, freeing stock"
     )
     release.set_defaults(handler=_release_expired_orders)
+
+    reset = commands.add_parser(
+        "reset-two-factor", help="Turn off a staff member's two-step login so they can redo it"
+    )
+    reset.add_argument("--email", required=True)
+    reset.set_defaults(handler=_reset_two_factor)
 
     args = parser.parse_args(argv)
     return args.handler(args)

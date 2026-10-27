@@ -1,5 +1,7 @@
 import "server-only";
 
+import { headers as requestHeaders } from "next/headers";
+
 // Talks to the Daisytoons API from the server. The browser never sees the staff login token:
 // it stays in an httpOnly cookie.
 
@@ -21,6 +23,9 @@ type Options = {
   // JSON, or FormData for file uploads.
   body?: unknown;
   token?: string;
+  // Pass the visitor's IP address on, so the API's limits on logins and checkouts count per
+  // visitor and not per web server. Only inside a request (Server Actions, dynamic pages).
+  forwardIp?: boolean;
 };
 
 export async function api<T>(path: string, options: Options = {}): Promise<T> {
@@ -33,6 +38,12 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
     body = JSON.stringify(options.body);
   }
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
+  if (options.forwardIp) {
+    const incoming = await requestHeaders();
+    // Set by the HTTPS proxy in front of the web app.
+    const ip = incoming.get("x-forwarded-for")?.split(",")[0]?.trim() || incoming.get("x-real-ip");
+    if (ip) headers["X-Forwarded-For"] = ip;
+  }
 
   const response = await fetch(`${API_URL}${path}`, {
     method: options.method ?? "GET",

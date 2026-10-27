@@ -6,6 +6,7 @@ export type Staff = {
   full_name: string;
   role: StaffRole;
   is_active: boolean;
+  two_factor_enabled: boolean;
 };
 
 export type OrderStatus = "pending" | "paid" | "packing" | "shipped" | "delivered" | "cancelled" | "refunded";

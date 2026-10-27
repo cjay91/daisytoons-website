@@ -1,0 +1,40 @@
+# HTTPS certificates come from Let's Encrypt automatically, once each domain's DNS points at
+# this server.
+{
+	email {$ACME_EMAIL}
+}
+
+(common) {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+}
+
+{$SHOP_DOMAIN} {
+	import common
+	reverse_proxy storefront:3000
+}
+
+www.{$SHOP_DOMAIN} {
+	redir https://{$SHOP_DOMAIN}{uri} permanent
+}
+
+{$CONSOLE_DOMAIN} {
+	import common
+	reverse_proxy console:3001
+}
+
+# The API is public only for PayHere's payment notifications and the health checks the uptime monitor calls.
+# The shop and console talk to it inside the server.
+{$API_DOMAIN} {
+	import common
+	@public path /payments/payhere/notify /health /health/ready
+	handle @public {
+		reverse_proxy api:8000
+	}
+	handle {
+		respond "Not found" 404
+	}
+}

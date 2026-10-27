@@ -52,6 +52,8 @@ def error_body(code: str, message: str, details: object = None) -> dict:
 
 async def _app_error(_: Request, exc: AppError) -> JSONResponse:
     headers = {"WWW-Authenticate": "Bearer"} if exc.status_code == 401 else None
+    if retry_after := getattr(exc, "retry_after", None):
+        headers = {"Retry-After": str(retry_after)}
     return JSONResponse(error_body(exc.code, exc.message), exc.status_code, headers=headers)
 
 

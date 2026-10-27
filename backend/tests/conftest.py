@@ -22,6 +22,7 @@ from app.db import get_db
 from app.email import MemorySender, get_email_sender
 from app.main import create_app
 from app.models import Customer, Inventory, Order, Product, Staff, StaffRole
+from app.ratelimit import MemoryCounter, get_counter
 from app.security import create_access_token, hash_password
 from app.storage import MemoryStorage, get_storage
 
@@ -83,11 +84,19 @@ def mailer() -> MemorySender:
 
 
 @pytest.fixture
-def client(db: Session, storage: MemoryStorage, mailer: MemorySender) -> TestClient:
+def counter() -> MemoryCounter:
+    return MemoryCounter()
+
+
+@pytest.fixture
+def client(
+    db: Session, storage: MemoryStorage, mailer: MemorySender, counter: MemoryCounter
+) -> TestClient:
     app = create_app()
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_storage] = lambda: storage
     app.dependency_overrides[get_email_sender] = lambda: mailer
+    app.dependency_overrides[get_counter] = lambda: counter
     return TestClient(app)
 
 
