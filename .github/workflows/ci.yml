@@ -90,8 +90,26 @@ jobs:
           npm start > /tmp/storefront.log 2>&1 &
           for i in $(seq 1 30); do curl --silent --fail --output /dev/null http://localhost:3000/ && break; sleep 1; done
           node e2e/shop.mjs
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - name: Staff pack a paid order in the console and ship it with tracking
+        working-directory: console
+        env:
+          ADMIN_EMAIL: admin@daisytoons.lk
+          ADMIN_PASSWORD: ci-admin-password
+        run: |
+          docker compose exec -T -e ADMIN_PASSWORD="$ADMIN_PASSWORD" api \
+            python -m app.cli create-admin --email "$ADMIN_EMAIL" --name "CI Admin"
+          npm ci
+          npm run build
+          npm start > /tmp/console.log 2>&1 &
+          for i in $(seq 1 30); do curl --silent --fail --output /dev/null http://localhost:3001/login && break; sleep 1; done
+          node e2e/fulfil.mjs
       - if: failure()
-        run: cat /tmp/storefront.log || true
+        run: cat /tmp/storefront.log /tmp/console.log || true
       - if: failure()
         run: docker compose logs
       - if: always()

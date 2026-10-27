@@ -48,11 +48,13 @@ The web apps run outside Docker:
 
 ```bash
 cd frontend && npm install && npm run dev   # the shop, http://localhost:3000
-cd console && npm install && npm run dev    # http://localhost:3001
+cd console && npm install && npm run dev    # the staff console, http://localhost:3001
 ```
+
+To log in to the console, create the first admin with `docker compose exec api python -m app.cli create-admin --email you@example.com --name "Your Name"`, then add other staff on the console's Staff page.
 
 ## Checks
 
-CI runs on every push (`.github/workflows/ci.yml`): backend lint, format and tests against Postgres; lint, typecheck and build for both web apps; and a smoke test that starts the Compose stack, imports the sample products, buys one through the API (`scripts/smoke-checkout.sh`), then buys through the storefront in a phone-sized browser as a guest and as a customer (`frontend/e2e/shop.mjs`). To run the same checks locally, see `backend/README.md`, or run `npm run lint`, `npm run typecheck` and `npm run build` in each web app.
+CI runs on every push (`.github/workflows/ci.yml`): backend lint, format and tests against Postgres; lint, typecheck and build for both web apps; and a smoke test that starts the Compose stack, imports the sample products, buys one through the API (`scripts/smoke-checkout.sh`), then buys through the storefront in a phone-sized browser as a guest and as a customer (`frontend/e2e/shop.mjs`), and finally packs and ships a paid order in the console with a tracking email (`console/e2e/fulfil.mjs`). To run the same checks locally, see `backend/README.md`, or run `npm run lint`, `npm run typecheck` and `npm run build` in each web app.
 
 See `docs/Gift Shop Build Plan.pdf` for the full build plan.

@@ -1,11 +1,12 @@
 import enum
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, ForeignKey, Numeric, String, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, str_enum
+from app.models.catalog import Product
 
 
 class PurchaseOrderStatus(enum.StrEnum):
@@ -23,6 +24,7 @@ class Supplier(TimestampMixin, Base):
     email: Mapped[str | None] = mapped_column(String(320))
     phone: Mapped[str | None] = mapped_column(String(32))
     notes: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(default=True)
 
 
 class PurchaseOrder(TimestampMixin, Base):
@@ -37,10 +39,14 @@ class PurchaseOrder(TimestampMixin, Base):
     )
     expected_at: Mapped[date | None]
     notes: Mapped[str | None] = mapped_column(Text)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     supplier: Mapped[Supplier] = relationship()
     items: Mapped[list["PurchaseOrderItem"]] = relationship(
-        back_populates="purchase_order", cascade="all, delete-orphan"
+        back_populates="purchase_order",
+        cascade="all, delete-orphan",
+        order_by="PurchaseOrderItem.id",
     )
 
 
@@ -57,3 +63,4 @@ class PurchaseOrderItem(Base):
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2))
 
     purchase_order: Mapped[PurchaseOrder] = relationship(back_populates="items")
+    product: Mapped["Product"] = relationship()

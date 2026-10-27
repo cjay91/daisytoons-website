@@ -111,6 +111,13 @@ export type Order = {
   paid_at: string | null;
   created_at: string;
   events: { to_status: OrderStatus; note: string; created_at: string }[];
+  shipment: {
+    courier: string;
+    tracking_number: string;
+    tracking_url: string | null;
+    shipped_at: string;
+    delivered_at: string | null;
+  } | null;
   access_key: string | null;
   currency: string;
 };

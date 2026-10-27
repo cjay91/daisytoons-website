@@ -14,14 +14,14 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.email import MemorySender, get_email_sender
 from app.main import create_app
-from app.models import Customer, Inventory, Product, Staff, StaffRole
+from app.models import Customer, Inventory, Order, Product, Staff, StaffRole
 from app.security import create_access_token, hash_password
 from app.storage import MemoryStorage, get_storage
 
@@ -168,3 +168,28 @@ def make_customer(db: Session) -> Callable[..., Customer]:
         return customer
 
     return make
+
+
+@pytest.fixture
+def place_order(client, db, make_product):
+    """Check out a guest cart and (by default) pay for it. Returns the order."""
+    from tests.test_checkout import DETAILS
+    from tests.test_payments import notify
+
+    def place(*products_and_quantities, paid=True, gift_message="") -> Order:
+        if not products_and_quantities:
+            products_and_quantities = ((make_product(price="1200", on_hand=5), 2),)
+        cart = {"X-Cart-Token": client.post("/cart").json()["token"]}
+        for product, quantity in products_and_quantities:
+            client.put(f"/cart/items/{product.id}", json={"quantity": quantity}, headers=cart)
+        if gift_message:
+            client.patch(
+                "/cart", json={"gift_wrap": True, "gift_message": gift_message}, headers=cart
+            )
+        number = client.post("/checkout", json=DETAILS, headers=cart).json()["order_number"]
+        order = db.scalar(select(Order).where(Order.order_number == number))
+        if paid:
+            notify(client, order)
+        return order
+
+    return place

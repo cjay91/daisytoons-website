@@ -2,6 +2,15 @@
 
 Choices we may want to revisit, with the reason we made them. Newest first.
 
+## 2026-10-27: Part 6 ops console and fulfilment
+
+- **Couriers are typed in, not connected.** The ship form offers Domex, Pronto Lanka, Koombiyo, Prompt Xpress, Sri Lanka Post and own delivery, and takes any tracking number and link. Connecting a courier's API (pickups, live tracking, labels) waits until one is chosen in Part 7.
+- **Refunds are made in the PayHere dashboard and recorded in the console**, with PayHere's reference. The console keeps the order status, stock and sales figures right.
+- **Packers pack and ship; only admins cancel paid orders and refund.** Support staff can see orders and clear attention flags. Easy to change in `app/permissions.py`.
+- **Cancelling an unshipped paid order puts its stock back automatically**; a refund after shipping puts stock back only if staff tick "put the items back".
+- **Sales days are Sri Lanka days** (Asia/Colombo), worked out by Postgres, so the server's own time zone doesn't matter. Revenue counts on the day of payment; refunds count on the day they're recorded.
+- **The console works like the storefront**: its server calls the API, and the staff token stays in an httpOnly cookie.
+
 ## 2026-10-24: Part 5 storefront
 
 - **The storefront's server talks to the API; browsers don't.** Login and cart tokens live in httpOnly cookies set by Server Actions, so a script injected into a page can't steal them. It also means the API needs no CORS opening for the shop.

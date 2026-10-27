@@ -1,7 +1,7 @@
 """Background jobs, run as their own process: python -m app.worker
 
 Every minute: cancel unpaid orders past their reservation time (releasing their stock), and
-retry any confirmation emails that failed to send.
+retry any confirmation or shipping emails that failed to send.
 """
 
 import logging
@@ -9,6 +9,7 @@ import time
 
 from app.db import SessionLocal
 from app.email import get_email_sender
+from app.services.fulfilment import send_missing_tracking_emails
 from app.services.orders import release_expired_orders, send_missing_confirmations
 
 log = logging.getLogger("app.worker")
@@ -20,8 +21,14 @@ def run_once() -> None:
     with SessionLocal() as db:
         released = release_expired_orders(db)
         sent = send_missing_confirmations(db, get_email_sender())
-    if released or sent:
-        log.info("Released %d expired orders, sent %d confirmation emails", released, sent)
+        tracking = send_missing_tracking_emails(db, get_email_sender())
+    if released or sent or tracking:
+        log.info(
+            "Released %d expired orders, sent %d confirmation and %d shipping emails",
+            released,
+            sent,
+            tracking,
+        )
 
 
 def main() -> None:

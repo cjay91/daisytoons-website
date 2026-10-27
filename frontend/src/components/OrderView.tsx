@@ -32,25 +32,42 @@ export function Tracking({ order }: { order: Order }) {
   if (order.status === "pending" || order.status === "cancelled") return null;
   const reached = new Map(order.events.map((event) => [event.to_status, event.created_at]));
   const current = STEPS.indexOf(order.status);
+  const shipment = order.shipment;
   return (
-    <ol className="card grid gap-4 p-5 sm:grid-cols-4">
-      {STEPS.map((step, index) => {
-        const done = current >= index || reached.has(step);
-        return (
-          <li key={step} className="flex items-start gap-3 sm:flex-col sm:gap-2">
-            <span
-              className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${done ? "bg-ok text-white" : "border border-line text-muted"}`}
-            >
-              {done ? "✓" : index + 1}
-            </span>
-            <div>
-              <p className={`text-sm font-medium ${done ? "" : "text-muted"}`}>{LABELS[step]}</p>
-              {reached.get(step) && <p className="text-xs text-muted">{when(reached.get(step)!)}</p>}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
+    <div className="card p-5">
+      <ol className="grid gap-4 sm:grid-cols-4">
+        {STEPS.map((step, index) => {
+          const done = current >= index || reached.has(step);
+          return (
+            <li key={step} className="flex items-start gap-3 sm:flex-col sm:gap-2">
+              <span
+                className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${done ? "bg-ok text-white" : "border border-line text-muted"}`}
+              >
+                {done ? "✓" : index + 1}
+              </span>
+              <div>
+                <p className={`text-sm font-medium ${done ? "" : "text-muted"}`}>{LABELS[step]}</p>
+                {reached.get(step) && <p className="text-xs text-muted">{when(reached.get(step)!)}</p>}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+      {shipment && (
+        <p className="mt-4 border-t border-line pt-4 text-sm">
+          Sent with {shipment.courier}, tracking number{" "}
+          <span className="font-mono font-semibold">{shipment.tracking_number}</span>
+          {shipment.tracking_url && (
+            <>
+              {" · "}
+              <a href={shipment.tracking_url} target="_blank" rel="noreferrer" className="font-medium text-brand">
+                Track your parcel
+              </a>
+            </>
+          )}
+        </p>
+      )}
+    </div>
   );
 }
 

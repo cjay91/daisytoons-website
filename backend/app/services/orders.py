@@ -28,13 +28,22 @@ TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
 }
 
 
-def move(order: Order, to: OrderStatus, note: str, *, late_payment: bool = False) -> None:
+def move(
+    order: Order,
+    to: OrderStatus,
+    note: str,
+    *,
+    late_payment: bool = False,
+    staff_id: int | None = None,
+) -> None:
     """Change an order's status and record it in the history. A payment that arrives after
     the order was cancelled may move it from cancelled to paid (late_payment)."""
     allowed = TRANSITIONS[order.status] | ({S.PAID} if late_payment else set())
     if to not in allowed:
         raise Conflict(f"An order can't go from {order.status} to {to}.")
-    order.events.append(OrderEvent(from_status=order.status, to_status=to, note=note))
+    order.events.append(
+        OrderEvent(from_status=order.status, to_status=to, note=note, staff_id=staff_id)
+    )
     order.status = to
 
 
