@@ -55,6 +55,10 @@ To log in to the console, create the first admin with `docker compose exec api p
 
 ## Checks
 
-CI runs on every push (`.github/workflows/ci.yml`): backend lint, format and tests against Postgres; lint, typecheck and build for both web apps; and a smoke test that starts the Compose stack, imports the sample products, buys one through the API (`scripts/smoke-checkout.sh`), then buys through the storefront in a phone-sized browser as a guest and as a customer (`frontend/e2e/shop.mjs`), and finally packs and ships a paid order in the console with a tracking email (`console/e2e/fulfil.mjs`). To run the same checks locally, see `backend/README.md`, or run `npm run lint`, `npm run typecheck` and `npm run build` in each web app.
+CI runs on every push (`.github/workflows/ci.yml`): backend lint, format and tests against Postgres; lint, typecheck and build for both web apps; and a smoke test that starts the Compose stack, imports the sample products, buys one through the API (`scripts/smoke-checkout.sh`), then buys through the storefront in a phone-sized browser as a guest and as a customer (`frontend/e2e/shop.mjs`), packs and ships a paid order in the console with a tracking email and logs in with two-step login (`console/e2e/fulfil.mjs`), and backs up the database and restores the backup into a fresh database (`scripts/test-backup-restore.sh`). The production images for both web apps and the backup container are built on every push too. To run the same checks locally, see `backend/README.md`, or run `npm run lint`, `npm run typecheck` and `npm run build` in each web app.
+
+## Going live
+
+`deploy/README.md` covers putting the shop on a server: what to sign up for, the production Compose file with automatic HTTPS, nightly backups and how to restore them, monitoring, and updates.
 
 See `docs/Gift Shop Build Plan.pdf` for the full build plan.

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { headers as requestHeaders } from "next/headers";
+
 // Talks to the Daisytoons API from the server. Browsers never call the API directly: login
 // and cart tokens stay in httpOnly cookies that page code can't read.
 
@@ -20,6 +22,9 @@ type Options = {
   method?: string;
   body?: unknown;
   token?: string;
+  // Pass the visitor's IP address on, so the API's limits on logins and checkouts count per
+  // visitor and not per web server. Only inside a request (Server Actions, dynamic pages).
+  forwardIp?: boolean;
   cartToken?: string;
 };
 
@@ -27,6 +32,12 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
+  if (options.forwardIp) {
+    const incoming = await requestHeaders();
+    // Set by the HTTPS proxy in front of the web app.
+    const ip = incoming.get("x-forwarded-for")?.split(",")[0]?.trim() || incoming.get("x-real-ip");
+    if (ip) headers["X-Forwarded-For"] = ip;
+  }
   if (options.cartToken) headers["X-Cart-Token"] = options.cartToken;
 
   const response = await fetch(`${API_URL}${path}`, {

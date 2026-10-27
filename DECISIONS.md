@@ -2,6 +2,15 @@
 
 Choices we may want to revisit, with the reason we made them. Newest first.
 
+## 2026-10-27: Part 7 launch
+
+- **One server with Docker** (the owner's choice), with Caddy for HTTPS, rather than managed hosting. It costs about $12–25 a month and runs the same setup as development. Moving to managed services later only means moving the containers and the database.
+- **Cloudflare R2 for photos and backups**, because it's S3-compatible, has a free tier and doesn't charge for downloads. Any S3-compatible store works by changing settings.
+- **Backups are nightly `pg_dump`s kept for 30 days**, not continuous archiving. At most one day of orders could be lost, which suits a small shop; PayHere and the order emails hold a second record of each sale. Revisit (WAL archiving or managed Postgres) if order volume grows.
+- **Two-step login is required for every staff account, not just admins**, because packers can see customers' addresses and change stock.
+- **Rate limits skip rather than block when Redis is down**, so a Redis problem can't stop sales.
+- **Policy pages are drafts** written from assumptions (7-day returns, delivery times). The owner checks them before launch.
+
 ## 2026-10-27: Part 6 ops console and fulfilment
 
 - **Couriers are typed in, not connected.** The ship form offers Domex, Pronto Lanka, Koombiyo, Prompt Xpress, Sri Lanka Post and own delivery, and takes any tracking number and link. Connecting a courier's API (pickups, live tracking, labels) waits until one is chosen in Part 7.
@@ -52,4 +61,4 @@ Choices we may want to revisit, with the reason we made them. Newest first.
 - **Next.js 16 with TypeScript and Tailwind** for both web apps. The storefront runs on port 3000, the console on 3001.
 - **Postgres 17 with pgvector** via the `pgvector/pgvector:pg17` image. The `vector` extension is created on first start.
 - **Redis 7** is in the stack now; the job queue library (ARQ or Celery) is picked when we first need background jobs.
-- **Still open:** payment gateway, courier, hosting, S3-compatible storage provider.
+- **Still open:** payment gateway, courier, hosting, S3-compatible storage provider. (Since decided: PayHere in Part 4; one Docker server and Cloudflare R2 in Part 7. The courier is still open.)

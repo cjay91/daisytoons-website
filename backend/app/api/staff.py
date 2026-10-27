@@ -2,8 +2,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, Form, Query, Response, UploadFile, status
 
-from app.api.deps import DB, CurrentStaff, FileStorage
+from app.api.deps import DB, ClientIP, CurrentStaff, FileStorage, RateCounter
 from app.config import get_settings
+from app.errors import InvalidCredentials
+from app.models import Staff
+from app.ratelimit import LOGIN_PER_ACCOUNT, LOGIN_PER_IP, TWO_FACTOR_PER_ACCOUNT, check
 from app.schemas import (
     InventoryOut,
     InventoryUpdate,
@@ -15,6 +18,7 @@ from app.schemas import (
     ProductTagsUpdate,
     ProductUpdate,
     StaffCreate,
+    StaffLoginOut,
     StaffOut,
     StaffProductOut,
     StockAdjustmentCreate,
@@ -22,17 +26,56 @@ from app.schemas import (
     TagCreate,
     TagOut,
     Token,
+    TwoFactorCode,
+    TwoFactorLogin,
+    TwoFactorSetupOut,
 )
-from app.security import create_access_token
-from app.services import accounts, inventory, products
+from app.security import create_access_token, decode_access_token
+from app.services import accounts, inventory, products, two_factor
 
 router = APIRouter(prefix="/staff", tags=["staff"])
 
 
 @router.post("/auth/login")
-def login(db: DB, body: LoginRequest) -> Token:
+def login(db: DB, counter: RateCounter, ip: ClientIP, body: LoginRequest) -> StaffLoginOut:
+    check(counter, LOGIN_PER_IP, "staff", ip)
+    check(counter, LOGIN_PER_ACCOUNT, "staff", ip, body.email)
     staff = accounts.authenticate_staff(db, email=body.email, password=body.password)
+    if two_factor.is_enabled(staff):
+        # The password was right; a code from the authenticator app finishes the login.
+        challenge = create_access_token("staff_2fa", staff.id, minutes=5)
+        return StaffLoginOut(two_factor_required=True, challenge_token=challenge)
+    return StaffLoginOut(access_token=create_access_token("staff", staff.id))
+
+
+@router.post("/auth/two-factor")
+def login_two_factor(db: DB, counter: RateCounter, body: TwoFactorLogin) -> Token:
+    staff_id = decode_access_token(body.challenge_token, "staff_2fa")
+    staff = db.get(Staff, staff_id) if staff_id else None
+    if staff is None or not staff.is_active:
+        raise InvalidCredentials("Your login timed out. Enter your password again.")
+    check(counter, TWO_FACTOR_PER_ACCOUNT, str(staff.id))
+    two_factor.verify_login(db, staff, body.code)
     return Token(access_token=create_access_token("staff", staff.id))
+
+
+@router.post("/me/two-factor/setup")
+def start_two_factor(db: DB, staff: CurrentStaff) -> TwoFactorSetupOut:
+    secret, url = two_factor.start_setup(db, staff)
+    return TwoFactorSetupOut(secret=secret, otpauth_url=url)
+
+
+@router.post("/me/two-factor/enable")
+def enable_two_factor(
+    db: DB, counter: RateCounter, staff: CurrentStaff, body: TwoFactorCode
+) -> StaffOut:
+    check(counter, TWO_FACTOR_PER_ACCOUNT, str(staff.id))
+    return StaffOut.model_validate(two_factor.enable(db, staff, body.code))
+
+
+@router.post("/members/{staff_id}/reset-two-factor")
+def reset_two_factor(db: DB, staff: CurrentStaff, staff_id: int) -> StaffOut:
+    return StaffOut.model_validate(two_factor.reset(db, staff, staff_id))
 
 
 @router.get("/me")

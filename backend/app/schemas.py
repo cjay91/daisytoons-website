@@ -58,6 +58,36 @@ class StaffOut(ORMModel):
     full_name: str
     role: StaffRole
     is_active: bool
+    totp_enabled_at: datetime | None = Field(default=None, exclude=True)
+
+    @computed_field
+    @property
+    def two_factor_enabled(self) -> bool:
+        return self.totp_enabled_at is not None
+
+
+class StaffLoginOut(BaseModel):
+    """Either a login token, or (with two-step login on) a challenge to answer with a code."""
+
+    access_token: str | None = None
+    token_type: str = "bearer"
+    two_factor_required: bool = False
+    challenge_token: str | None = None
+
+
+class TwoFactorLogin(BaseModel):
+    challenge_token: str
+    code: str = Field(min_length=6, max_length=10)
+
+
+class TwoFactorCode(BaseModel):
+    code: str = Field(min_length=6, max_length=10)
+
+
+class TwoFactorSetupOut(BaseModel):
+    secret: str
+    # Shown as a QR code for the authenticator app to scan.
+    otpauth_url: str
 
 
 class ProductCreate(BaseModel):

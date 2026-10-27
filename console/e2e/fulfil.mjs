@@ -8,6 +8,8 @@
 // tracking email. Then the admin restocks a product through a purchase order and checks the
 // sales summary.
 
+import { createHmac } from "node:crypto";
+
 import { chromium } from "playwright";
 
 const CONSOLE = process.env.CONSOLE_URL ?? "http://localhost:3001";
@@ -25,6 +27,24 @@ function check(condition, message) {
 async function see(locator, message) {
   await locator.first().waitFor({ timeout: 20000 });
   console.log(`ok: ${message}`);
+}
+
+// Next keeps recently visited pages in the DOM, hidden, so match only the visible field.
+function field(page, label) {
+  return page.getByLabel(label, { exact: true }).filter({ visible: true });
+}
+
+/** The current 6-digit code for a base32 secret (RFC 6238), as an authenticator app shows. */
+function totp(secret, at = Date.now()) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const char of secret.replace(/\s/g, "")) bits += alphabet.indexOf(char).toString(2).padStart(5, "0");
+  const key = Buffer.from(bits.match(/.{8}/g).map((byte) => parseInt(byte, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 1000 / 30)));
+  const hash = createHmac("sha1", key).update(counter).digest();
+  const offset = hash[hash.length - 1] & 0xf;
+  return String((hash.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(6, "0");
 }
 
 async function call(path, options = {}) {
@@ -149,6 +169,43 @@ try {
   await page.goto(`${CONSOLE}/reports`);
   await see(page.getByRole("heading", { name: "Revenue, last 14 days" }), "sales summary");
   check(!(await page.getByText("No sales that day.").isVisible()), "today's sales are listed");
+
+  // Two-step login: a new packer sets it up, then logs in with a code.
+  const packerEmail = `packer-${Date.now()}@daisytoons.lk`;
+  await page.goto(`${CONSOLE}/staff`);
+  await page.locator("#full_name").fill("E2E Packer");
+  await page.locator("#email").fill(packerEmail);
+  await page.locator("#password").fill("packer-password-123");
+  await page.locator("#role").selectOption("packer");
+  await page.getByRole("button", { name: "Add staff member" }).click();
+  await see(page.getByText(packerEmail), "packer added");
+  await page.getByRole("button", { name: "Log out" }).click();
+  await page.waitForURL(/\/login/);
+  await field(page, "Email").fill(packerEmail);
+  await field(page, "Password").fill("packer-password-123");
+  await page.getByRole("button", { name: "Log in" }).click();
+  await page.waitForURL(`${CONSOLE}/`);
+  await page.goto(`${CONSOLE}/security`);
+  await page.getByRole("button", { name: "Set up two-step login" }).click();
+  const key = (await page.getByText(/Enter this key instead/).locator("span").textContent()).replace(/\s/g, "");
+  await field(page, "Code from the app").fill(totp(key));
+  await page.getByRole("button", { name: "Turn on" }).click();
+  await page.waitForURL(`${CONSOLE}/`);
+  await page.goto(`${CONSOLE}/security`);
+  await see(page.getByText("Two-step login is on"), "two-step login turned on");
+  await page.getByRole("button", { name: "Log out" }).click();
+  await page.waitForURL(/\/login/);
+  await field(page, "Email").fill(packerEmail);
+  await field(page, "Password").fill("packer-password-123");
+  await page.getByRole("button", { name: "Log in" }).click();
+  await page.waitForURL(/\/login\/code/);
+  // A code works only once, and the setup just used this one, so wait for the next.
+  await page.waitForTimeout(30000 - (Date.now() % 30000) + 500);
+  await field(page, "Code").fill(totp(key));
+  await page.getByRole("button", { name: "Log in" }).click();
+  await page.waitForURL(`${CONSOLE}/`);
+  await see(page.getByText("E2E Packer"), "logged in with a code from the app");
+  check((await page.getByRole("link", { name: "Sales" }).count()) === 0, "packers don't see sales");
 
   check(errors.length === 0, `no page errors ${errors.join("; ")}`);
 } finally {

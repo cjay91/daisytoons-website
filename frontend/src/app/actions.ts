@@ -86,6 +86,7 @@ export async function placeOrder(_: CheckoutState, form: FormData): Promise<Chec
   try {
     const result = await api<CheckoutResult>("/checkout", {
       method: "POST",
+      forwardIp: true,
       token: await liveToken(),
       cartToken,
       body: {
@@ -120,6 +121,7 @@ function safeNext(form: FormData): string {
 async function startSession(email: string, password: string) {
   const { access_token } = await api<{ access_token: string }>("/auth/login", {
     method: "POST",
+    forwardIp: true,
     body: { email, password },
   });
   await setLogin(access_token);
@@ -144,6 +146,7 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
   try {
     await api("/auth/register", {
       method: "POST",
+      forwardIp: true,
       body: { email, password, full_name: text(form, "full_name"), phone: optional(form, "phone") },
     });
     await startSession(email, password);

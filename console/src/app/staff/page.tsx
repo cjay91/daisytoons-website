@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { createMember } from "@/app/actions";
+import { createMember, resetTwoFactor } from "@/app/actions";
 import { ActionForm } from "@/components/ActionForm";
 import { Loading } from "@/components/Loading";
 import { staffApi } from "@/lib/session";
@@ -73,6 +73,7 @@ async function Members() {
             <th>Name</th>
             <th>Email</th>
             <th>Role</th>
+            <th>Two-step login</th>
           </tr>
         </thead>
         <tbody>
@@ -81,6 +82,22 @@ async function Members() {
               <td>{m.full_name}</td>
               <td>{m.email}</td>
               <td className="capitalize">{m.role}</td>
+              <td>
+                {m.two_factor_enabled ? (
+                  <ActionForm
+                    action={resetTwoFactor}
+                    hidden={{ staff_id: m.id }}
+                    submit="Reset"
+                    variant="outline"
+                    confirm={`Reset two-step login for ${m.full_name}? Use this when they've lost their phone.`}
+                    className="flex items-center gap-3"
+                  >
+                    <span className="text-ok">On</span>
+                  </ActionForm>
+                ) : (
+                  <span className="text-muted">Not set up</span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

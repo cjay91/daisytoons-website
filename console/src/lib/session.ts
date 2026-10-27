@@ -8,6 +8,8 @@ import { api, ApiError } from "./api";
 import type { Staff } from "./types";
 
 const LOGIN_COOKIE = "dt_staff";
+// Holds the password-checked half of a login while the person types their code.
+const CHALLENGE_COOKIE = "dt_staff_2fa";
 // Matches the API's login token lifetime (JWT_EXPIRE_MINUTES).
 const LOGIN_MAX_AGE = 60 * 60;
 
@@ -23,6 +25,23 @@ export async function setLogin(token: string) {
 
 export async function clearLogin() {
   (await cookies()).delete(LOGIN_COOKIE);
+}
+
+export async function setChallenge(token: string | null) {
+  const store = await cookies();
+  if (!token) store.delete(CHALLENGE_COOKIE);
+  else
+    store.set(CHALLENGE_COOKIE, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 5 * 60,
+    });
+}
+
+export async function getChallenge(): Promise<string | undefined> {
+  return (await cookies()).get(CHALLENGE_COOKIE)?.value;
 }
 
 /** The logged-in staff member, or null. Once per request. */
@@ -45,6 +64,7 @@ export async function staffApi<T>(path: string, options: { method?: string; body
     return await api<T>(path, { ...options, token });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) redirect("/login");
+    if (error instanceof ApiError && error.code === "two_factor_setup_required") redirect("/security");
     throw error;
   }
 }

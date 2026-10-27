@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     smtp_starttls: bool = False
     email_from: str = "Daisytoons <orders@daisytoons.lk>"
 
+    # Staff must set up two-step login before they can use the console.
+    require_staff_two_factor: bool = False
+    # Error tracking: errors are sent to Sentry when this is set.
+    sentry_dsn: str | None = None
+
     @model_validator(mode="after")
     def _require_real_secrets_in_production(self) -> "Settings":
         if self.environment != "production":
@@ -74,6 +79,8 @@ class Settings(BaseSettings):
             raise ValueError("PAYMENT_PROVIDER must be payhere in production")
         if self.payhere_merchant_secret == DEV_PAYHERE_SECRET:
             raise ValueError("PAYHERE_MERCHANT_SECRET must be set in production")
+        if not self.require_staff_two_factor:
+            raise ValueError("REQUIRE_STAFF_TWO_FACTOR must be true in production")
         return self
 
 

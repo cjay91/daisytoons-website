@@ -6,7 +6,8 @@ from pwdlib import PasswordHash
 
 from app.config import get_settings
 
-TokenKind = Literal["customer", "staff"]
+# staff_2fa: a short-lived token between the password step and the code step of a staff login.
+TokenKind = Literal["customer", "staff", "staff_2fa"]
 
 _password_hash = PasswordHash.recommended()  # Argon2
 _ALGORITHM = "HS256"
@@ -26,14 +27,14 @@ def verify_password(password: str, password_hash: str | None) -> bool:
     return _password_hash.verify(password, password_hash)
 
 
-def create_access_token(kind: TokenKind, subject_id: int) -> str:
+def create_access_token(kind: TokenKind, subject_id: int, minutes: int | None = None) -> str:
     settings = get_settings()
     now = datetime.now(UTC)
     payload = {
         "sub": str(subject_id),
         "kind": kind,
         "iat": now,
-        "exp": now + timedelta(minutes=settings.jwt_expire_minutes),
+        "exp": now + timedelta(minutes=minutes or settings.jwt_expire_minutes),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=_ALGORITHM)
 
