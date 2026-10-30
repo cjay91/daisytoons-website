@@ -636,3 +636,104 @@ class DailyReportOut(BaseModel):
     low_stock: int
     last_14_days: list[DaySales]
     currency: str
+
+
+# Agents (Part 10)
+
+
+class ChatRequest(BaseModel):
+    agent: str = Field(pattern="^(gift_concierge|support)$")
+    message: str = Field(min_length=1, max_length=2000)
+    conversation_id: str | None = Field(default=None, max_length=36)
+
+
+class GiftMessageRequest(BaseModel):
+    occasion: str = Field(default="", max_length=100)
+    recipient: str = Field(default="", max_length=100)
+    tone: str = Field(default="warm", max_length=50)
+    details: str = Field(default="", max_length=500)
+
+
+class GiftMessageOut(BaseModel):
+    suggestions: list[str]
+
+
+class ContactOut(BaseModel):
+    email: str
+    email_link: str
+    whatsapp_link: str | None = None
+    hours: str
+
+
+class AgentStatusOut(BaseModel):
+    enabled: bool
+    contact: ContactOut
+
+
+class AgentRunSummaryOut(ORMModel):
+    id: int
+    agent: str
+    conversation_id: str
+    actor_kind: str
+    customer_id: int | None
+    staff_id: int | None
+    status: str
+    input: str
+    output: str | None
+    error: str | None
+    steps: int
+    input_tokens: int
+    output_tokens: int
+    cost: Decimal
+    started_at: datetime
+    finished_at: datetime | None
+
+
+class AgentMessageOut(ORMModel):
+    id: int
+    run_id: int
+    role: str
+    content: list[dict[str, Any]]
+    model: str | None
+    stop_reason: str | None
+    input_tokens: int | None
+    output_tokens: int | None
+    cache_read_tokens: int | None
+    cache_write_tokens: int | None
+    cost: Decimal | None
+    duration_ms: int | None
+    created_at: datetime
+
+
+class AgentToolCallOut(ORMModel):
+    id: int
+    run_id: int
+    tool: str
+    risk: str | None
+    input: dict[str, Any]
+    output: Any
+    error: str | None
+    duration_ms: int
+    created_at: datetime
+
+
+class AgentTotalsOut(BaseModel):
+    runs: int
+    failed: int
+    tokens: int
+    cost: Decimal
+
+
+class AgentRunListOut(BaseModel):
+    runs: list[AgentRunSummaryOut]
+    today: AgentTotalsOut
+    last_7_days: AgentTotalsOut
+    by_agent: dict[str, AgentTotalsOut]  # last 7 days
+
+
+class ConversationOut(BaseModel):
+    conversation_id: str
+    runs: list[AgentRunSummaryOut]
+    messages: list[AgentMessageOut]
+    tool_calls: list[AgentToolCallOut]
+    cost: Decimal

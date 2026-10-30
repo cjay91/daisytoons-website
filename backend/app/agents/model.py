@@ -100,7 +100,8 @@ class ClaudeModel:
             max_tokens=request.max_tokens,
             system=request.system,
             messages=request.messages,
-            tools=request.tools,
+            # An agent without tools, such as the gift message helper, sends none.
+            **({"tools": request.tools} if request.tools else {}),
             thinking={"type": "adaptive"},
             output_config={"effort": request.effort},
             cache_control={"type": "ephemeral"},

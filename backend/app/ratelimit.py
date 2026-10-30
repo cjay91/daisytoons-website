@@ -43,6 +43,9 @@ LOGIN_PER_IP = Limit("login-ip", 50, 15 * 60)
 REGISTER_PER_IP = Limit("register-ip", 10, 60 * 60)
 CHECKOUT_PER_IP = Limit("checkout-ip", 30, 60 * 60)
 TWO_FACTOR_PER_ACCOUNT = Limit("two-factor", 10, 15 * 60)
+# Storefront agents: each message costs money, so far fewer than a person would ever need.
+CHAT_PER_IP = Limit("chat-ip", 40, 60 * 60)
+GIFT_MESSAGE_PER_IP = Limit("gift-message-ip", 20, 60 * 60)
 
 
 class Counter(Protocol):
