@@ -182,6 +182,7 @@ def test_policy_numbers_match_the_storefront_and_settings():
     assert Decimal(value("freeDeliveryOver")) == settings.free_delivery_over
     assert Decimal(value("giftWrap")) == settings.gift_wrap_fee
     assert int(value("holdMinutes")) == settings.reservation_minutes
+    assert int(value("returnDays")) == settings.return_days
     shipping = (KNOWLEDGE_DIR / "policies/shipping.md").read_text()
     assert f"{value('deliveryDaysColombo')} working days in Colombo" in shipping
     assert f"{value('deliveryDaysOther')} working days elsewhere" in shipping

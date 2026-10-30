@@ -18,3 +18,9 @@ export function dateTime(value: string | null | undefined): string {
 export function shortDate(value: string): string {
   return new Date(value).toLocaleDateString("en-LK", { ...zone, day: "numeric", month: "short" });
 }
+
+/** Agent costs are in US dollars, often fractions of a cent: "0.004210" → "$0.0042" */
+export function dollars(amount: string | number): string {
+  const value = Number(amount);
+  return `$${value.toFixed(value !== 0 && value < 0.1 ? 4 : 2)}`;
+}

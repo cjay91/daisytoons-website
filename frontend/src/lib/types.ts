@@ -132,3 +132,12 @@ export type CheckoutResult = {
   expires_at: string;
   payment: PaymentForm;
 };
+
+export type Contact = {
+  email: string;
+  email_link: string;
+  whatsapp_link: string | null;
+  hours: string;
+};
+
+export type AgentStatus = { enabled: boolean; contact: Contact };

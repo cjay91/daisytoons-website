@@ -175,3 +175,70 @@ export type DailyReport = {
   last_14_days: { day: string; orders: number; revenue: string }[];
   currency: string;
 };
+
+export type AgentRun = {
+  id: number;
+  agent: string;
+  conversation_id: string;
+  actor_kind: "staff" | "customer";
+  customer_id: number | null;
+  staff_id: number | null;
+  status: "running" | "waiting" | "finished" | "stopped" | "failed";
+  input: string;
+  output: string | null;
+  error: string | null;
+  steps: number;
+  input_tokens: number;
+  output_tokens: number;
+  cost: string;
+  started_at: string;
+  finished_at: string | null;
+};
+
+export type AgentTotals = { runs: number; failed: number; tokens: number; cost: string };
+
+export type AgentRunList = {
+  runs: AgentRun[];
+  today: AgentTotals;
+  last_7_days: AgentTotals;
+  by_agent: Record<string, AgentTotals>;
+};
+
+export type ContentBlock = { type: string; id?: string; text?: string; name?: string; input?: unknown };
+
+export type AgentMessage = {
+  id: number;
+  run_id: number;
+  role: "user" | "assistant";
+  content: ContentBlock[];
+  model: string | null;
+  stop_reason: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cache_read_tokens: number | null;
+  cache_write_tokens: number | null;
+  cost: string | null;
+  duration_ms: number | null;
+  created_at: string;
+};
+
+export type AgentToolCall = {
+  id: number;
+  run_id: number;
+  tool_use_id: string;
+  tool: string;
+  risk: string | null;
+  input: Record<string, unknown>;
+  output: unknown;
+  error: string | null;
+  duration_ms: number;
+  created_at: string;
+};
+
+export type AgentConversation = {
+  conversation_id: string;
+  runs: AgentRun[];
+  messages: AgentMessage[];
+  tool_calls: AgentToolCall[];
+  cost: string;
+};

@@ -79,6 +79,13 @@ class Settings(BaseSettings):
     voyage_api_key: str | None = None
     embedding_model: str = "voyage-3.5-lite"
     shop_email: str = "orders@daisytoons.lk"
+    # Customer agents on the storefront (Part 10). A WhatsApp number in international form
+    # without the +, such as 94771234567, adds WhatsApp to the ways to reach a person.
+    shop_whatsapp: str | None = None
+    return_days: int = 7
+    # US dollars a day that storefront agents may spend in total; past it the chat is switched
+    # off until midnight UTC.
+    customer_agents_daily_budget: Decimal = Decimal("20")
 
     @model_validator(mode="after")
     def _require_real_secrets_in_production(self) -> "Settings":

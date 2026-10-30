@@ -77,6 +77,27 @@ export async function updateGiftOptions(_: FormState, form: FormData): Promise<F
   return { ok: true };
 }
 
+export type GiftMessageState = FormState & { suggestions?: string[] };
+
+export async function suggestGiftMessages(_: GiftMessageState, form: FormData): Promise<GiftMessageState> {
+  try {
+    const result = await api<{ suggestions: string[] }>("/agents/gift-message", {
+      method: "POST",
+      forwardIp: true,
+      token: await liveToken(),
+      body: {
+        occasion: text(form, "occasion"),
+        recipient: text(form, "recipient"),
+        tone: text(form, "tone") || "warm",
+        details: text(form, "details"),
+      },
+    });
+    return { ok: true, suggestions: result.suggestions };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 // Checkout
 
 export type CheckoutState = FormState & { result?: CheckoutResult };

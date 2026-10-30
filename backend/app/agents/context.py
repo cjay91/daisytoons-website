@@ -11,15 +11,19 @@ class Actor:
     kind: ActorKind
     staff: Staff | None = None
     customer: Customer | None = None
+    # A guest's cart, on the storefront. Logged-in customers' carts are found by customer.
+    cart_token: str | None = None
 
     @classmethod
     def for_staff(cls, staff: Staff) -> "Actor":
         return cls(ActorKind.STAFF, staff=staff)
 
     @classmethod
-    def for_customer(cls, customer: Customer | None = None) -> "Actor":
+    def for_customer(
+        cls, customer: Customer | None = None, cart_token: str | None = None
+    ) -> "Actor":
         """A customer, or a guest on the storefront when `customer` is None."""
-        return cls(ActorKind.CUSTOMER, customer=customer)
+        return cls(ActorKind.CUSTOMER, customer=customer, cart_token=cart_token)
 
     @property
     def staff_id(self) -> int | None:
