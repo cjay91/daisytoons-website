@@ -1,7 +1,8 @@
 """Background jobs, run as their own process: python -m app.worker
 
-Every minute: cancel unpaid orders past their reservation time (releasing their stock), and
-retry any confirmation or shipping emails that failed to send.
+Every minute: cancel unpaid orders past their reservation time (releasing their stock), retry
+any confirmation or shipping emails that failed to send, and update the search index for
+products and knowledge that changed.
 """
 
 import logging
@@ -12,9 +13,11 @@ import redis
 from app.config import get_settings
 from app.db import SessionLocal
 from app.email import get_email_sender
+from app.embeddings import get_embedder
 from app.errors_tracking import init_error_tracking
 from app.services.fulfilment import send_missing_tracking_emails
 from app.services.orders import release_expired_orders, send_missing_confirmations
+from app.services.search import index_knowledge, index_products
 
 log = logging.getLogger("app.worker")
 
@@ -43,7 +46,22 @@ def run_once() -> None:
             sent,
             tracking,
         )
+    index_search()
     heartbeat()
+
+
+def index_search() -> None:
+    """Separate from the order jobs, so a search problem (say, the embeddings service being
+    down) never stops them."""
+    try:
+        with SessionLocal() as db:
+            products = index_products(db, get_embedder())
+            documents = index_knowledge(db, get_embedder())
+    except Exception:
+        log.exception("Updating the search index failed")
+        return
+    if products or documents:
+        log.info("Indexed %d products and %d knowledge documents for search", products, documents)
 
 
 def main() -> None:

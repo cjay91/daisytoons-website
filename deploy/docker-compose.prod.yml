@@ -34,6 +34,8 @@ x-backend-env: &backend-env
   EMAIL_FROM: ${EMAIL_FROM:?}
   SENTRY_DSN: ${SENTRY_DSN:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
+  SHOP_EMAIL: ${SHOP_EMAIL:-orders@daisytoons.lk}
 
 services:
   caddy:
@@ -128,7 +130,7 @@ services:
     environment:
       API_URL: http://api:8000
       SITE_URL: https://${SHOP_DOMAIN:?}
-      SHOP_EMAIL: ${SHOP_EMAIL:-}
+      SHOP_EMAIL: ${SHOP_EMAIL:-orders@daisytoons.lk}
       SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       api:

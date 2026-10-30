@@ -73,6 +73,13 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     agent_model: str = "claude-opus-5-5"
 
+    # Search for agents (Part 9). "auto" uses Voyage AI when VOYAGE_API_KEY is set, and otherwise
+    # "hashing", a built-in stand-in that needs no account, for development and tests.
+    embedding_provider: Literal["auto", "voyage", "hashing"] = "auto"
+    voyage_api_key: str | None = None
+    embedding_model: str = "voyage-3.5-lite"
+    shop_email: str = "orders@daisytoons.lk"
+
     @model_validator(mode="after")
     def _require_real_secrets_in_production(self) -> "Settings":
         if self.environment != "production":

@@ -23,6 +23,7 @@ from app.models.catalog import (
     TagKind,
     product_tags,
 )
+from app.models.knowledge import KnowledgeChunk, KnowledgeDocument, ProductVector
 from app.models.orders import (
     Cart,
     CartItem,
@@ -52,6 +53,8 @@ __all__ = [
     "CartItem",
     "Customer",
     "Inventory",
+    "KnowledgeChunk",
+    "KnowledgeDocument",
     "Order",
     "OrderEvent",
     "OrderItem",
@@ -59,6 +62,7 @@ __all__ = [
     "PaymentEvent",
     "Product",
     "ProductImage",
+    "ProductVector",
     "PurchaseOrder",
     "PurchaseOrderItem",
     "PurchaseOrderStatus",

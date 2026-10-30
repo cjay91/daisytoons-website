@@ -8,20 +8,13 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+import app.agents.search_tools  # noqa: F401  (registers search_products)
 from app.agents.core import Agent, Limits
 from app.agents.tools import Tool, ToolContext, registry
 from app.models import Risk
 from app.permissions import Permission
 from app.schemas import InventoryUpdate
 from app.services.inventory import available, get_inventory, update_inventory
-from app.services.products import list_active_products
-
-
-class SearchProducts(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    query: str = Field(description="Words to look for in product names, descriptions and tags.")
-    max_price: Decimal | None = Field(default=None, ge=0, description="Highest price in LKR.")
 
 
 class ProductId(BaseModel):
@@ -36,19 +29,6 @@ class BinLocation(ProductId):
 
 class ReorderPoint(ProductId):
     reorder_point: int = Field(ge=0, le=10_000, description="Reorder when stock falls to this.")
-
-
-def search_products(ctx: ToolContext, data: SearchProducts) -> list[dict]:
-    products = list_active_products(ctx.db, q=data.query, max_price=data.max_price)
-    return [
-        {
-            "product_id": p.id,
-            "name": p.name,
-            "price": str(p.price),
-            "in_stock": p.inventory is not None and available(p.inventory) > 0,
-        }
-        for p in products[:10]
-    ]
 
 
 def get_stock(ctx: ToolContext, data: ProductId) -> dict:
@@ -75,15 +55,6 @@ def set_reorder_point(ctx: ToolContext, data: ReorderPoint) -> dict:
     return {"product_id": inventory.product_id, "reorder_point": inventory.reorder_point}
 
 
-registry.add(
-    Tool(
-        "search_products",
-        "Find products for sale by keywords, optionally under a price. Returns up to 10.",
-        SearchProducts,
-        search_products,
-        audience="anyone",
-    )
-)
 registry.add(
     Tool(
         "get_stock",
@@ -124,7 +95,13 @@ STOCK_HELPER = Agent(
         "LKR. When you ask for a change that needs approval, say that it is waiting for a staff "
         "member to approve it."
     ),
-    tools=["search_products", "get_stock", "set_bin_location", "set_reorder_point"],
+    tools=[
+        "search_products",
+        "search_knowledge",
+        "get_stock",
+        "set_bin_location",
+        "set_reorder_point",
+    ],
     effort="low",
     limits=Limits(steps=6, tokens=40_000, cost=Decimal("0.25")),
 )
