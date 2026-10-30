@@ -33,6 +33,7 @@ x-backend-env: &backend-env
   SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
   EMAIL_FROM: ${EMAIL_FROM:?}
   SENTRY_DSN: ${SENTRY_DSN:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
 
 services:
   caddy:

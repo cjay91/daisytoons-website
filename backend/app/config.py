@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     # Error tracking: errors are sent to Sentry when this is set.
     sentry_dsn: str | None = None
 
+    # Agents (Claude). Without a key, agents can only run against the scripted test model.
+    anthropic_api_key: str | None = None
+    agent_model: str = "claude-opus-5-5"
+
     @model_validator(mode="after")
     def _require_real_secrets_in_production(self) -> "Settings":
         if self.environment != "production":

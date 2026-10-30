@@ -1,6 +1,17 @@
 """All models, imported here so Alembic and the app see every table."""
 
 from app.models.accounts import Address, Customer, Staff, StaffRole
+from app.models.agents import (
+    ActorKind,
+    AgentMessage,
+    AgentRun,
+    AgentToolCall,
+    ApprovalRequest,
+    ApprovalStatus,
+    AuditEntry,
+    Risk,
+    RunStatus,
+)
 from app.models.base import Base
 from app.models.catalog import (
     Inventory,
@@ -26,6 +37,15 @@ from app.models.orders import (
 from app.models.suppliers import PurchaseOrder, PurchaseOrderItem, PurchaseOrderStatus, Supplier
 
 __all__ = [
+    "ActorKind",
+    "AgentMessage",
+    "AgentRun",
+    "AgentToolCall",
+    "ApprovalRequest",
+    "ApprovalStatus",
+    "AuditEntry",
+    "Risk",
+    "RunStatus",
     "Address",
     "Base",
     "Cart",
