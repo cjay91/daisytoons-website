@@ -18,6 +18,7 @@ dependencies = [
     "redis>=5",
     "pyotp>=2.9",
     "sentry-sdk[fastapi]>=2",
+    "anthropic>=1",
 ]
 
 [dependency-groups]

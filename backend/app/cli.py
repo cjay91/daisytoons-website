@@ -79,6 +79,29 @@ def _reset_two_factor(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_evals(args: argparse.Namespace) -> int:
+    from app.agents.evals import SUITES, run_suite
+    from app.agents.model import ClaudeModel
+    from app.db import engine
+
+    if args.live and not get_settings().anthropic_api_key:
+        print("Set ANTHROPIC_API_KEY to run evals against the real model.", file=sys.stderr)
+        return 1
+    names = [args.agent] if args.agent else list(SUITES)
+    failed = 0
+    for name in names:
+        scenarios = [s for s in SUITES[name] if s.live or not args.live]
+        results = run_suite(engine, scenarios, ClaudeModel if args.live else None)
+        for result in results:
+            mark = "pass" if result.passed else "FAIL"
+            print(f"{mark}  {name}: {result.scenario}  (${result.cost})")
+            for failure in result.failures:
+                print(f"        {failure}")
+        failed += sum(not r.passed for r in results)
+    print(f"{failed} failed." if failed else "All passed.")
+    return 1 if failed else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -107,6 +130,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     reset.add_argument("--email", required=True)
     reset.set_defaults(handler=_reset_two_factor)
+
+    evals = commands.add_parser(
+        "run-evals",
+        help="Run agent evals (changes nothing: each runs in a rolled-back transaction)",
+    )
+    evals.add_argument("agent", nargs="?", help="Only this agent's suite")
+    evals.add_argument("--live", action="store_true", help="Use the real model, not the script")
+    evals.set_defaults(handler=_run_evals)
 
     args = parser.parse_args(argv)
     return args.handler(args)

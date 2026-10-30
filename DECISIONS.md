@@ -2,6 +2,14 @@
 
 Choices we may want to revisit, with the reason we made them. Newest first.
 
+## 2026-10-30: Part 8 agent harness
+
+- **Built before the shop is live** (the owner's choice). The harness is internal and doesn't talk to customers; the plan's rule that agents are built against real data still holds for Parts 9 and 10.
+- **Our own loop, not the SDK's tool runner**, because approvals pause a tool rather than run it, and every call is recorded in our own tables as it happens.
+- **Claude Opus 5.5 by default**, set by `AGENT_MODEL`, with effort per agent (the test agent uses low). Costs come from a price table in `agents/model.py`; a model missing from it is costed at the highest price so limits still hold.
+- **Approved tools run as the approving staff member**, so the services' own permission checks apply to them, and the audit log records both the agent run and the approver.
+- **Evals run in rolled-back transactions**, so they can run against the live database with the real model without changing anything.
+
 ## 2026-10-27: Part 7 launch
 
 - **One server with Docker** (the owner's choice), with Caddy for HTTPS, rather than managed hosting. It costs about $12–25 a month and runs the same setup as development. Moving to managed services later only means moving the containers and the database.
