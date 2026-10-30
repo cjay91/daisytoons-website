@@ -19,6 +19,7 @@ dependencies = [
     "pyotp>=2.9",
     "sentry-sdk[fastapi]>=2",
     "anthropic>=1",
+    "pgvector>=0.4",
 ]
 
 [dependency-groups]

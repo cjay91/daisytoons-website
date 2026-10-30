@@ -2,6 +2,14 @@
 
 Choices we may want to revisit, with the reason we made them. Newest first.
 
+## 2026-10-30: Part 9 knowledge base
+
+- **Voyage AI for embeddings** (pending the owner's choice; Anthropic recommends it for retrieval with Claude, and its free tier covers this shop). Claude has no embeddings API. The vector size is fixed at 1024, which OpenAI's models can also produce, so switching later only means re-indexing.
+- **A hashing stand-in when there's no key**, so development, CI and a fresh server work without an account. It matches words, not meaning, and its scores are reported next to the real ones so the difference is visible.
+- **Hybrid search with reciprocal rank fusion**, not vectors alone, because shoppers often type exact names ("teddy bear"), and keyword search also finds products before they're indexed.
+- **Knowledge lives in Markdown files in the repo**, reviewed like code and indexed on deploy, rather than in the database. A test keeps the policy files in step with the storefront pages.
+- **The worker re-indexes by comparing hashes every minute** instead of hooking every service that edits products, so nothing that changes a product can forget to re-index it.
+
 ## 2026-10-30: Part 8 agent harness
 
 - **Built before the shop is live** (the owner's choice). The harness is internal and doesn't talk to customers; the plan's rule that agents are built against real data still holds for Parts 9 and 10.

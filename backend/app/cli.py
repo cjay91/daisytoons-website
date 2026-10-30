@@ -102,6 +102,38 @@ def _run_evals(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+def _index_search(_: argparse.Namespace) -> int:
+    from app.embeddings import get_embedder
+    from app.services.search import index_knowledge, index_products
+
+    with SessionLocal() as db:
+        products = index_products(db, get_embedder())
+        documents = index_knowledge(db, get_embedder())
+    print(f"Indexed {products} products and {documents} knowledge documents.")
+    return 0
+
+
+def _search_evals(args: argparse.Namespace) -> int:
+    from app import search_evals
+    from app.db import engine
+    from app.embeddings import get_embedder
+
+    if get_settings().environment == "production" and not args.yes:
+        print(
+            "This briefly hides every product inside a transaction that is rolled back. "
+            "Run it on a copy of the database, or pass --yes.",
+            file=sys.stderr,
+        )
+        return 1
+    embedder = get_embedder()
+    print(f"Embedder: {embedder.model}")
+    for score in search_evals.run(engine, embedder):
+        print(score.summary())
+        for miss in score.misses:
+            print(f"    miss: {miss}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -138,6 +170,13 @@ def main(argv: list[str] | None = None) -> int:
     evals.add_argument("agent", nargs="?", help="Only this agent's suite")
     evals.add_argument("--live", action="store_true", help="Use the real model, not the script")
     evals.set_defaults(handler=_run_evals)
+
+    search = commands.add_parser("search-evals", help="Measure product and knowledge search")
+    search.add_argument("--yes", action="store_true", help="Run even in production")
+    search.set_defaults(handler=_search_evals)
+
+    index = commands.add_parser("index-search", help="Index products and knowledge now")
+    index.set_defaults(handler=_index_search)
 
     args = parser.parse_args(argv)
     return args.handler(args)

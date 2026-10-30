@@ -183,7 +183,7 @@ def test_stream_reports_text_tools_and_done(db, world, make_staff):
 def test_customers_are_not_offered_staff_tools(db, world, make_customer):
     model = ScriptedModel([[text("Hello.")]])
     run(db, AGENT, Actor.for_customer(make_customer()), "Hi", model)
-    assert [t["name"] for t in model.requests[0].tools] == ["search_products"]
+    assert [t["name"] for t in model.requests[0].tools] == ["search_products", "search_knowledge"]
 
 
 def test_unknown_tools_and_bad_input_are_errors_for_the_model(db, world, make_staff):
