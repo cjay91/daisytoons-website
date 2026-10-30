@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 
 import { api, ApiError } from "./api";
-import type { Cart, Customer } from "./types";
+import type { AgentStatus, Cart, Customer } from "./types";
 
 const LOGIN_COOKIE = "dt_login";
 const CART_COOKIE = "dt_cart";
@@ -65,4 +65,13 @@ export async function liveToken(): Promise<string | undefined> {
 export const getCart = cache(async (): Promise<Cart> => {
   const { cartToken } = await getTokens();
   return api<Cart>("/cart", { token: await liveToken(), cartToken });
+});
+
+/** Whether the shop assistant is on, and how to reach a person. Null when the API is down. */
+export const getAgentStatus = cache(async (): Promise<AgentStatus | null> => {
+  try {
+    return await api<AgentStatus>("/agents/status");
+  } catch {
+    return null;
+  }
 });

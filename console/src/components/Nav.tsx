@@ -12,6 +12,7 @@ const LINKS: { href: string; label: string; area: Area }[] = [
   { href: "/suppliers", label: "Suppliers", area: "purchasing" },
   { href: "/purchase-orders", label: "Purchase orders", area: "purchasing" },
   { href: "/reports", label: "Sales", area: "reports" },
+  { href: "/agents", label: "Assistant", area: "reports" },
   { href: "/staff", label: "Staff", area: "staff" },
 ];
 

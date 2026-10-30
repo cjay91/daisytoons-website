@@ -1,8 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { Suspense } from "react";
+
+import { ChatWidget } from "@/components/ChatWidget";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { getAgentStatus } from "@/lib/session";
 
 import "./globals.css";
 
@@ -43,7 +47,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Header />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
         <Footer />
+        <Suspense>
+          <Assistant />
+        </Suspense>
       </body>
     </html>
   );
+}
+
+async function Assistant() {
+  const status = await getAgentStatus();
+  return status?.enabled ? <ChatWidget contact={status.contact} /> : null;
 }

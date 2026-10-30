@@ -28,7 +28,8 @@ type Options = {
   cartToken?: string;
 };
 
-export async function api<T>(path: string, options: Options = {}): Promise<T> {
+/** The API's raw response, for streaming. `api` is the usual way to call it. */
+export async function apiResponse(path: string, options: Options = {}): Promise<Response> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
@@ -40,12 +41,16 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
   }
   if (options.cartToken) headers["X-Cart-Token"] = options.cartToken;
 
-  const response = await fetch(`${API_URL}${path}`, {
+  return fetch(`${API_URL}${path}`, {
     method: options.method ?? "GET",
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     cache: "no-store",
   });
+}
+
+export async function api<T>(path: string, options: Options = {}): Promise<T> {
+  const response = await apiResponse(path, options);
   if (response.status === 204) return undefined as T;
   const data = await response.json().catch(() => null);
   if (!response.ok) {

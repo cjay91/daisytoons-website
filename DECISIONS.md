@@ -2,6 +2,15 @@
 
 Choices we may want to revisit, with the reason we made them. Newest first.
 
+## 2026-10-30: Part 10 customer agents
+
+- **The tools decide what a visitor can see, not the prompt.** An order is found only for the customer who placed it, or with its number and the email it was placed with, and a wrong email looks exactly like a missing order. A prompt injection can't widen that, because there is no tool that reads anyone else's data.
+- **Order number plus email for guests**, the usual "track my order" check, rather than the order page's secret key, which customers don't have to hand. The answer leaves out addresses and phone numbers, and the chat is rate limited per IP to slow guessing.
+- **Starting a return only flags the order for the team** (a notify tool, audited). Refunds, cancellations and changes stay with people; the agents hand over by email, and WhatsApp once `SHOP_WHATSAPP` is set.
+- **The chat is off without an Anthropic key, and past a daily budget** (`CUSTOMER_AGENTS_DAILY_BUDGET`, $20 by default), so a busy or abusive day can't run up a bill. Each run also has its own small step, token and cost limits.
+- **Effort is low for the storefront agents**, to keep replies quick and cheap; raise it per agent if live evals show they need it.
+- **Guests get a cart when they open the gift concierge**, because cookies can't be set once the reply is streaming.
+
 ## 2026-10-30: Part 9 knowledge base
 
 - **Voyage AI for embeddings** (pending the owner's choice; Anthropic recommends it for retrieval with Claude, and its free tier covers this shop). Claude has no embeddings API. The vector size is fixed at 1024, which OpenAI's models can also produce, so switching later only means re-indexing.

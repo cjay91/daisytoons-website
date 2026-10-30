@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import { GiftOptions, QuantityControl } from "@/components/CartControls";
 import { rupees } from "@/lib/money";
-import { getCart } from "@/lib/session";
+import { getAgentStatus, getCart } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Your cart", robots: { index: false } };
 
@@ -21,7 +21,7 @@ export default function CartPage() {
 }
 
 async function CartContents() {
-  const cart = await getCart();
+  const [cart, assistant] = await Promise.all([getCart(), getAgentStatus()]);
   if (cart.items.length === 0) {
     return (
       <div className="card p-8 text-center">
@@ -62,7 +62,12 @@ async function CartContents() {
             </li>
           ))}
         </ul>
-        <GiftOptions giftWrap={cart.gift_wrap} message={cart.gift_message} fee={rupees(cart.gift_wrap_price)} />
+        <GiftOptions
+          giftWrap={cart.gift_wrap}
+          message={cart.gift_message}
+          fee={rupees(cart.gift_wrap_price)}
+          helper={!!assistant?.enabled}
+        />
       </div>
 
       <aside className="card h-fit p-5">

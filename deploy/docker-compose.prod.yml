@@ -36,6 +36,8 @@ x-backend-env: &backend-env
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
   SHOP_EMAIL: ${SHOP_EMAIL:-orders@daisytoons.lk}
+  SHOP_WHATSAPP: ${SHOP_WHATSAPP:-}
+  CUSTOMER_AGENTS_DAILY_BUDGET: ${CUSTOMER_AGENTS_DAILY_BUDGET:-20}
 
 services:
   caddy:

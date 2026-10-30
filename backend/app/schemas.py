@@ -708,6 +708,7 @@ class AgentMessageOut(ORMModel):
 class AgentToolCallOut(ORMModel):
     id: int
     run_id: int
+    tool_use_id: str
     tool: str
     risk: str | None
     input: dict[str, Any]
